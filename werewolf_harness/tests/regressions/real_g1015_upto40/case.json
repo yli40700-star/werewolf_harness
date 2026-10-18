@@ -1,0 +1,11 @@
+{
+ "name": "real_g1015_upto40",
+ "source": "g1015.json",
+ "upto": 40,
+ "expect": [],
+ "allow_drift": false,
+ "note": "真实 haiku 局：L2 指令遵从连续拦截 9 次后重试成功，修正后的投票意向检查不误拦",
+ "calls": 105,
+ "steps": 40,
+ "created": "2026-10-14"
+}

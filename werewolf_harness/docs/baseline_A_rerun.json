@@ -1,0 +1,3140 @@
+{
+ "base": {
+  "meta": {
+   "games": 30,
+   "models": [
+    "claude-cli:haiku"
+   ],
+   "variants": [
+    "8p"
+   ],
+   "seeds": [
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009,
+    1010,
+    1011,
+    1012,
+    1013,
+    1014,
+    1015,
+    1016,
+    1017,
+    1018,
+    1019,
+    1020,
+    1021,
+    1022,
+    1023,
+    1024,
+    1025,
+    1026,
+    1027,
+    1028,
+    1029,
+    1030
+   ],
+   "parallel": [
+    8
+   ],
+   "turns": 1710,
+   "aligned": true,
+   "date_range": [
+    "2026-10-14T22:04",
+    "2026-10-14T23:36"
+   ]
+  },
+  "cost": {
+   "tokens_per_game_local": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 314949.433333,
+     "lo": 297617.780833,
+     "hi": 333014.89
+    },
+    "p50": {
+     "est": 302886.0,
+     "lo": 288545.0,
+     "hi": 330454.0
+    },
+    "p95": {
+     "est": 399763.15,
+     "lo": 369259.1,
+     "hi": 441205.0
+    }
+   },
+   "tokens_per_game_cli": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 516260.966667,
+     "lo": 487187.025,
+     "hi": 547205.193333
+    },
+    "p50": {
+     "est": 497026.0,
+     "lo": 472067.5,
+     "hi": 537065.5
+    },
+    "p95": {
+     "est": 659869.35,
+     "lo": 607663.2,
+     "hi": 731648.0
+    }
+   },
+   "prompt_per_game_cli": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 434707.1,
+     "lo": 410860.618333,
+     "hi": 460165.0375
+    },
+    "p50": {
+     "est": 416558.0,
+     "lo": 397389.0,
+     "hi": 454993.0
+    },
+    "p95": {
+     "est": 552887.45,
+     "lo": 510573.1,
+     "hi": 613242.0
+    }
+   },
+   "completion_per_game_cli": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 81553.866667,
+     "lo": 76399.875,
+     "hi": 87155.335833
+    },
+    "p50": {
+     "est": 77571.0,
+     "lo": 74406.0,
+     "hi": 85858.5
+    },
+    "p95": {
+     "est": 107660.4,
+     "lo": 96288.0,
+     "hi": 118406.0
+    }
+   },
+   "calls_per_game": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 119.966667,
+     "lo": 113.799167,
+     "hi": 126.433333
+    },
+    "p50": {
+     "est": 115.5,
+     "lo": 110.0,
+     "hi": 124.0
+    },
+    "p95": {
+     "est": 150.65,
+     "lo": 139.65,
+     "hi": 166.0
+    }
+   },
+   "turns_per_game": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 57.0,
+     "lo": 54.3,
+     "hi": 59.900833
+    },
+    "p50": {
+     "est": 53.0,
+     "lo": 53.0,
+     "hi": 59.5
+    },
+    "p95": {
+     "est": 70.1,
+     "lo": 66.0,
+     "hi": 77.0
+    }
+   },
+   "tokens_per_call_cli": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 4294.289665,
+     "lo": 4267.0905,
+     "hi": 4319.314714
+    },
+    "p50": {
+     "est": 4311.178571,
+     "lo": 4256.752128,
+     "hi": 4329.894384
+    },
+    "p95": {
+     "est": 4403.291291,
+     "lo": 4361.492453,
+     "hi": 4407.518072
+    }
+   },
+   "tokens_per_call_local": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 2621.510815,
+     "lo": 2603.835991,
+     "hi": 2638.719112
+    },
+    "p50": {
+     "est": 2624.325397,
+     "lo": 2606.981651,
+     "hi": 2648.539164
+    },
+    "p95": {
+     "est": 2677.849545,
+     "lo": 2659.383642,
+     "hi": 2744.066116
+    }
+   },
+   "cli_over_local": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 1.638237,
+     "lo": 1.632376,
+     "hi": 1.644585
+    },
+    "p50": {
+     "est": 1.636307,
+     "lo": 1.628953,
+     "hi": 1.647065
+    },
+    "p95": {
+     "est": 1.663153,
+     "lo": 1.652717,
+     "hi": 1.687726
+    }
+   },
+   "calls_accounted": true,
+   "turn_sum_equals_cli": true,
+   "turn_sum_equal_games": 30,
+   "turn_sum_over_cli_min": 1.0,
+   "by_task": {
+    "night": {
+     "tokens_per_turn": {
+      "n": 253,
+      "n_games": 30,
+      "mean": {
+       "est": 7750.442688,
+       "lo": 7487.791093,
+       "hi": 8017.38638
+      },
+      "p50": {
+       "est": 6276.0,
+       "lo": 6093.0,
+       "hi": 6525.0
+      },
+      "p95": {
+       "est": 12653.6,
+       "lo": 11993.59625,
+       "hi": 15226.0
+      }
+     },
+     "calls_per_turn": {
+      "n": 253,
+      "n_games": 30,
+      "mean": {
+       "est": 2.351779,
+       "lo": 2.297189,
+       "hi": 2.407277
+      },
+      "p50": {
+       "est": 2.0,
+       "lo": 2.0,
+       "hi": 2.0
+      },
+      "p95": {
+       "est": 3.0,
+       "lo": 3.0,
+       "hi": 4.0
+      }
+     },
+     "tokens_per_game": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 65362.066667,
+       "lo": 59913.578333,
+       "hi": 71291.486667
+      },
+      "p50": {
+       "est": 68646.0,
+       "lo": 55957.5,
+       "hi": 72930.4375
+      },
+      "p95": {
+       "est": 85213.05,
+       "lo": 78975.1,
+       "hi": 110615.0
+      }
+     },
+     "share_of_tokens": 0.126607
+    },
+    "review": {
+     "tokens_per_turn": {
+      "n": 480,
+      "n_games": 30,
+      "mean": {
+       "est": 10088.097917,
+       "lo": 9968.578802,
+       "hi": 10208.944531
+      },
+      "p50": {
+       "est": 10188.0,
+       "lo": 10117.5,
+       "hi": 10322.0
+      },
+      "p95": {
+       "est": 12308.35,
+       "lo": 12090.25,
+       "hi": 12374.0
+      }
+     },
+     "calls_per_turn": {
+      "n": 480,
+      "n_games": 30,
+      "mean": {
+       "est": 2.002083,
+       "lo": 2.0,
+       "hi": 2.00625
+      },
+      "p50": {
+       "est": 2.0,
+       "lo": 2.0,
+       "hi": 2.0
+      },
+      "p95": {
+       "est": 2.0,
+       "lo": 2.0,
+       "hi": 2.0
+      }
+     },
+     "tokens_per_game": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 161409.566667,
+       "lo": 159497.260833,
+       "hi": 163343.1125
+      },
+      "p50": {
+       "est": 162240.5,
+       "lo": 159883.0,
+       "hi": 163918.0
+      },
+      "p95": {
+       "est": 169432.9,
+       "lo": 166004.0,
+       "hi": 172011.0
+      }
+     },
+     "share_of_tokens": 0.312651
+    },
+    "speak": {
+     "tokens_per_turn": {
+      "n": 463,
+      "n_games": 30,
+      "mean": {
+       "est": 7835.838013,
+       "lo": 7697.878089,
+       "hi": 7983.474408
+      },
+      "p50": {
+       "est": 7563.0,
+       "lo": 7411.0,
+       "hi": 7700.0
+      },
+      "p95": {
+       "est": 10658.4,
+       "lo": 10034.38875,
+       "hi": 12050.4975
+      }
+     },
+     "calls_per_turn": {
+      "n": 463,
+      "n_games": 30,
+      "mean": {
+       "est": 2.051836,
+       "lo": 2.02643,
+       "hi": 2.077779
+      },
+      "p50": {
+       "est": 2.0,
+       "lo": 2.0,
+       "hi": 2.0
+      },
+      "p95": {
+       "est": 2.0,
+       "lo": 2.0,
+       "hi": 3.0
+      }
+     },
+     "tokens_per_game": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 120933.1,
+       "lo": 112634.004167,
+       "hi": 130396.581667
+      },
+      "p50": {
+       "est": 109983.0,
+       "lo": 106423.0,
+       "hi": 123981.5
+      },
+      "p95": {
+       "est": 176259.7,
+       "lo": 139545.8,
+       "hi": 194556.0
+      }
+     },
+     "share_of_tokens": 0.234248
+    },
+    "vote": {
+     "tokens_per_turn": {
+      "n": 514,
+      "n_games": 30,
+      "mean": {
+       "est": 9837.912451,
+       "lo": 9570.393102,
+       "hi": 10219.789388
+      },
+      "p50": {
+       "est": 9129.5,
+       "lo": 9009.9875,
+       "hi": 9221.025
+      },
+      "p95": {
+       "est": 14765.8,
+       "lo": 13976.91125,
+       "hi": 15487.79
+      }
+     },
+     "calls_per_turn": {
+      "n": 514,
+      "n_games": 30,
+      "mean": {
+       "est": 2.126459,
+       "lo": 2.075613,
+       "hi": 2.199632
+      },
+      "p50": {
+       "est": 2.0,
+       "lo": 2.0,
+       "hi": 2.0
+      },
+      "p95": {
+       "est": 3.0,
+       "lo": 3.0,
+       "hi": 3.0
+      }
+     },
+     "tokens_per_game": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 168556.233333,
+       "lo": 152148.57,
+       "hi": 185134.1075
+      },
+      "p50": {
+       "est": 155169.5,
+       "lo": 136811.0,
+       "hi": 183571.0
+      },
+      "p95": {
+       "est": 249368.4,
+       "lo": 217312.0,
+       "hi": 265141.0
+      }
+     },
+     "share_of_tokens": 0.326494
+    }
+   },
+   "per_game": [
+    {
+     "local": 284161,
+     "local_prompt": 261963,
+     "local_completion": 22198,
+     "cli": 464284,
+     "cli_prompt": 396887,
+     "cli_completion": 67397,
+     "turn_sum": 464284,
+     "calls": 109,
+     "calls_est": 109,
+     "turns": 53
+    },
+    {
+     "local": 441205,
+     "local_prompt": 407521,
+     "local_completion": 33684,
+     "cli": 731648,
+     "cli_prompt": 613242,
+     "cli_completion": 118406,
+     "turn_sum": 731648,
+     "calls": 166,
+     "calls_est": 166,
+     "turns": 77
+    },
+    {
+     "local": 290564,
+     "local_prompt": 266790,
+     "local_completion": 23774,
+     "cli": 479058,
+     "cli_prompt": 402099,
+     "cli_completion": 76959,
+     "turn_sum": 479058,
+     "calls": 113,
+     "calls_est": 113,
+     "turns": 53
+    },
+    {
+     "local": 365507,
+     "local_prompt": 335215,
+     "local_completion": 30292,
+     "cli": 603976,
+     "cli_prompt": 504533,
+     "cli_completion": 99443,
+     "turn_sum": 603976,
+     "calls": 138,
+     "calls_est": 138,
+     "turns": 66
+    },
+    {
+     "local": 275426,
+     "local_prompt": 252970,
+     "local_completion": 22456,
+     "cli": 447825,
+     "cli_prompt": 380920,
+     "cli_completion": 66905,
+     "turn_sum": 447825,
+     "calls": 106,
+     "calls_est": 106,
+     "turns": 51
+    },
+    {
+     "local": 296556,
+     "local_prompt": 272978,
+     "local_completion": 23578,
+     "cli": 482815,
+     "cli_prompt": 408408,
+     "cli_completion": 74407,
+     "turn_sum": 482815,
+     "calls": 112,
+     "calls_est": 112,
+     "turns": 53
+    },
+    {
+     "local": 236916,
+     "local_prompt": 216122,
+     "local_completion": 20794,
+     "cli": 388243,
+     "cli_prompt": 326452,
+     "cli_completion": 61791,
+     "turn_sum": 388243,
+     "calls": 93,
+     "calls_est": 93,
+     "turns": 46
+    },
+    {
+     "local": 377854,
+     "local_prompt": 346263,
+     "local_completion": 31591,
+     "cli": 629931,
+     "cli_prompt": 521862,
+     "cli_completion": 108069,
+     "turn_sum": 629931,
+     "calls": 143,
+     "calls_est": 143,
+     "turns": 69
+    },
+    {
+     "local": 328989,
+     "local_prompt": 301907,
+     "local_completion": 27082,
+     "cli": 544158,
+     "cli_prompt": 453753,
+     "cli_completion": 90405,
+     "turn_sum": 544158,
+     "calls": 126,
+     "calls_est": 126,
+     "turns": 61
+    },
+    {
+     "local": 332855,
+     "local_prompt": 306519,
+     "local_completion": 26336,
+     "cli": 541532,
+     "cli_prompt": 458484,
+     "cli_completion": 83048,
+     "turn_sum": 541532,
+     "calls": 125,
+     "calls_est": 125,
+     "turns": 60
+    },
+    {
+     "local": 307633,
+     "local_prompt": 282099,
+     "local_completion": 25534,
+     "cli": 510051,
+     "cli_prompt": 423293,
+     "cli_completion": 86758,
+     "turn_sum": 510051,
+     "calls": 118,
+     "calls_est": 118,
+     "turns": 55
+    },
+    {
+     "local": 315607,
+     "local_prompt": 290893,
+     "local_completion": 24714,
+     "cli": 521554,
+     "cli_prompt": 436595,
+     "cli_completion": 84959,
+     "turn_sum": 521554,
+     "calls": 123,
+     "calls_est": 123,
+     "turns": 58
+    },
+    {
+     "local": 330022,
+     "local_prompt": 302461,
+     "local_completion": 27561,
+     "cli": 543231,
+     "cli_prompt": 455885,
+     "cli_completion": 87346,
+     "turn_sum": 543231,
+     "calls": 126,
+     "calls_est": 126,
+     "turns": 61
+    },
+    {
+     "local": 289882,
+     "local_prompt": 265117,
+     "local_completion": 24765,
+     "cli": 471939,
+     "cli_prompt": 397533,
+     "cli_completion": 74406,
+     "turn_sum": 471939,
+     "calls": 109,
+     "calls_est": 109,
+     "turns": 53
+    },
+    {
+     "local": 332032,
+     "local_prompt": 304703,
+     "local_completion": 27329,
+     "cli": 532529,
+     "cli_prompt": 455004,
+     "cli_completion": 77525,
+     "turn_sum": 532529,
+     "calls": 121,
+     "calls_est": 121,
+     "turns": 51
+    },
+    {
+     "local": 380190,
+     "local_prompt": 351192,
+     "local_completion": 28998,
+     "cli": 620952,
+     "cli_prompt": 524664,
+     "cli_completion": 96288,
+     "turn_sum": 620952,
+     "calls": 143,
+     "calls_est": 143,
+     "turns": 67
+    },
+    {
+     "local": 276090,
+     "local_prompt": 252075,
+     "local_completion": 24015,
+     "cli": 450936,
+     "cli_prompt": 379829,
+     "cli_completion": 71107,
+     "turn_sum": 450936,
+     "calls": 105,
+     "calls_est": 105,
+     "turns": 51
+    },
+    {
+     "local": 321771,
+     "local_prompt": 296197,
+     "local_completion": 25574,
+     "cli": 527886,
+     "cli_prompt": 445566,
+     "cli_completion": 82320,
+     "turn_sum": 527886,
+     "calls": 123,
+     "calls_est": 123,
+     "turns": 58
+    },
+    {
+     "local": 241635,
+     "local_prompt": 221035,
+     "local_completion": 20600,
+     "cli": 393612,
+     "cli_prompt": 333639,
+     "cli_completion": 59973,
+     "turn_sum": 393612,
+     "calls": 95,
+     "calls_est": 95,
+     "turns": 46
+    },
+    {
+     "local": 396335,
+     "local_prompt": 363852,
+     "local_completion": 32483,
+     "cli": 653194,
+     "cli_prompt": 546431,
+     "cli_completion": 106763,
+     "turn_sum": 653194,
+     "calls": 149,
+     "calls_est": 149,
+     "turns": 71
+    },
+    {
+     "local": 253551,
+     "local_prompt": 231842,
+     "local_completion": 21709,
+     "cli": 407173,
+     "cli_prompt": 347743,
+     "cli_completion": 59430,
+     "turn_sum": 407173,
+     "calls": 97,
+     "calls_est": 97,
+     "turns": 47
+    },
+    {
+     "local": 295061,
+     "local_prompt": 270691,
+     "local_completion": 24370,
+     "cli": 478521,
+     "cli_prompt": 403973,
+     "cli_completion": 74548,
+     "turn_sum": 478521,
+     "calls": 111,
+     "calls_est": 111,
+     "turns": 53
+    },
+    {
+     "local": 287208,
+     "local_prompt": 263262,
+     "local_completion": 23946,
+     "cli": 472196,
+     "cli_prompt": 397245,
+     "cli_completion": 74951,
+     "turn_sum": 472196,
+     "calls": 111,
+     "calls_est": 111,
+     "turns": 53
+    },
+    {
+     "local": 402568,
+     "local_prompt": 371065,
+     "local_completion": 31503,
+     "cli": 665331,
+     "cli_prompt": 558170,
+     "cli_completion": 107161,
+     "turn_sum": 665331,
+     "calls": 152,
+     "calls_est": 152,
+     "turns": 69
+    },
+    {
+     "local": 372329,
+     "local_prompt": 342324,
+     "local_completion": 30005,
+     "cli": 610680,
+     "cli_prompt": 515515,
+     "cli_completion": 95165,
+     "turn_sum": 610680,
+     "calls": 141,
+     "calls_est": 141,
+     "turns": 66
+    },
+    {
+     "local": 330886,
+     "local_prompt": 305189,
+     "local_completion": 25697,
+     "cli": 532599,
+     "cli_prompt": 454982,
+     "cli_completion": 77617,
+     "turn_sum": 532599,
+     "calls": 123,
+     "calls_est": 123,
+     "turns": 59
+    },
+    {
+     "local": 271886,
+     "local_prompt": 249453,
+     "local_completion": 22433,
+     "cli": 458869,
+     "cli_prompt": 377101,
+     "cli_completion": 81768,
+     "turn_sum": 458869,
+     "calls": 108,
+     "calls_est": 108,
+     "turns": 53
+    },
+    {
+     "local": 246623,
+     "local_prompt": 226349,
+     "local_completion": 20274,
+     "cli": 402061,
+     "cli_prompt": 340273,
+     "cli_completion": 61788,
+     "turn_sum": 402061,
+     "calls": 97,
+     "calls_est": 97,
+     "turns": 46
+    },
+    {
+     "local": 269002,
+     "local_prompt": 246801,
+     "local_completion": 22201,
+     "cli": 437044,
+     "cli_prompt": 371309,
+     "cli_completion": 65735,
+     "turn_sum": 437044,
+     "calls": 104,
+     "calls_est": 104,
+     "turns": 51
+    },
+    {
+     "local": 298139,
+     "local_prompt": 274310,
+     "local_completion": 23829,
+     "cli": 484001,
+     "cli_prompt": 409823,
+     "cli_completion": 74178,
+     "turn_sum": 484001,
+     "calls": 112,
+     "calls_est": 112,
+     "turns": 53
+    }
+   ]
+  },
+  "latency": {
+   "call_ms": {
+    "n": 1889,
+    "n_games": 30,
+    "mean": {
+     "est": 4967.730545,
+     "lo": 4865.91536,
+     "hi": 5080.414432
+    },
+    "p50": {
+     "est": 4787.0,
+     "lo": 4650.0,
+     "hi": 4910.0
+    },
+    "p95": {
+     "est": 8394.8,
+     "lo": 7898.12375,
+     "hi": 8721.9525
+    }
+   },
+   "note_ms": {
+    "n": 1710,
+    "n_games": 30,
+    "mean": {
+     "est": 5093.877778,
+     "lo": 5015.495003,
+     "hi": 5174.554123
+    },
+    "p50": {
+     "est": 4846.0,
+     "lo": 4773.9875,
+     "hi": 4903.05
+    },
+    "p95": {
+     "est": 7687.3,
+     "lo": 7383.99,
+     "hi": 8007.0
+    }
+   },
+   "turn_model_s": {
+    "n": 1710,
+    "n_games": 30,
+    "mean": {
+     "est": 10.581622,
+     "lo": 10.368198,
+     "hi": 10.784368
+    },
+    "p50": {
+     "est": 10.1915,
+     "lo": 10.022,
+     "hi": 10.331
+    },
+    "p95": {
+     "est": 16.5517,
+     "lo": 15.625857,
+     "hi": 17.398758
+    }
+   },
+   "turn_wall_s": {
+    "n": 1710,
+    "n_games": 30,
+    "mean": {
+     "est": 7.540364,
+     "lo": 7.214611,
+     "hi": 7.87023
+    },
+    "p50": {
+     "est": 6.4355,
+     "lo": 6.225,
+     "hi": 6.668025
+    },
+    "p95": {
+     "est": 14.78785,
+     "lo": 13.546595,
+     "hi": 16.139
+    }
+   },
+   "game_s": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 188.051441,
+     "lo": 172.824516,
+     "hi": 204.760968
+    },
+    "p50": {
+     "est": 183.521708,
+     "lo": 153.864338,
+     "hi": 204.023885
+    },
+    "p95": {
+     "est": 272.20267,
+     "lo": 228.010537,
+     "hi": 301.483934
+    }
+   },
+   "by_task": {
+    "night": {
+     "turn_wall_s": {
+      "n": 253,
+      "n_games": 30,
+      "mean": {
+       "est": 4.941273,
+       "lo": 4.648631,
+       "hi": 5.237265
+      },
+      "p50": {
+       "est": 3.383,
+       "lo": 3.237,
+       "hi": 3.742
+      },
+      "p95": {
+       "est": 12.675,
+       "lo": 10.121,
+       "hi": 14.212
+      }
+     },
+     "turn_model_s": {
+      "n": 253,
+      "n_games": 30,
+      "mean": {
+       "est": 8.268328,
+       "lo": 7.933801,
+       "hi": 8.602835
+      },
+      "p50": {
+       "est": 7.18,
+       "lo": 6.917,
+       "hi": 7.563562
+      },
+      "p95": {
+       "est": 15.27,
+       "lo": 13.511685,
+       "hi": 16.813
+      }
+     },
+     "phase_wall_s": {
+      "n": 90,
+      "n_games": 30,
+      "mean": {
+       "est": 11.948178,
+       "lo": 11.111713,
+       "hi": 12.808127
+      },
+      "p50": {
+       "est": 11.0975,
+       "lo": 10.301,
+       "hi": 11.4945
+      },
+      "p95": {
+       "est": 20.49135,
+       "lo": 16.516444,
+       "hi": 24.92975
+      }
+     },
+     "phase_wall_per_game_s": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 35.844533,
+       "lo": 31.733972,
+       "hi": 39.968046
+      },
+      "p50": {
+       "est": 37.253,
+       "lo": 28.2415,
+       "hi": 41.177
+      },
+      "p95": {
+       "est": 54.8681,
+       "lo": 47.536,
+       "hi": 61.931
+      }
+     }
+    },
+    "review": {
+     "turn_wall_s": {
+      "n": 480,
+      "n_games": 30,
+      "mean": {
+       "est": 9.729417,
+       "lo": 9.082999,
+       "hi": 10.514011
+      },
+      "p50": {
+       "est": 9.557,
+       "lo": 8.646,
+       "hi": 10.38
+      },
+      "p95": {
+       "est": 14.56205,
+       "lo": 12.864,
+       "hi": 16.893
+      }
+     },
+     "turn_model_s": {
+      "n": 480,
+      "n_games": 30,
+      "mean": {
+       "est": 11.365508,
+       "lo": 11.091717,
+       "hi": 11.679106
+      },
+      "p50": {
+       "est": 11.0525,
+       "lo": 10.742,
+       "hi": 11.357588
+      },
+      "p95": {
+       "est": 15.65465,
+       "lo": 14.794,
+       "hi": 16.65015
+      }
+     },
+     "phase_wall_s": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 24.231833,
+       "lo": 23.093942,
+       "hi": 25.534078
+      },
+      "p50": {
+       "est": 23.0885,
+       "lo": 22.327475,
+       "hi": 24.7745
+      },
+      "p95": {
+       "est": 29.6563,
+       "lo": 26.873,
+       "hi": 36.061
+      }
+     },
+     "phase_wall_per_game_s": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 24.231833,
+       "lo": 23.093942,
+       "hi": 25.534078
+      },
+      "p50": {
+       "est": 23.0885,
+       "lo": 22.327475,
+       "hi": 24.7745
+      },
+      "p95": {
+       "est": 29.6563,
+       "lo": 26.873,
+       "hi": 36.061
+      }
+     }
+    },
+    "speak": {
+     "turn_wall_s": {
+      "n": 463,
+      "n_games": 30,
+      "mean": {
+       "est": 5.418102,
+       "lo": 5.087199,
+       "hi": 5.783038
+      },
+      "p50": {
+       "est": 4.56,
+       "lo": 4.415,
+       "hi": 4.693
+      },
+      "p95": {
+       "est": 10.1881,
+       "lo": 8.195863,
+       "hi": 11.99395
+      }
+     },
+     "turn_model_s": {
+      "n": 463,
+      "n_games": 30,
+      "mean": {
+       "est": 10.437646,
+       "lo": 10.141707,
+       "hi": 10.727673
+      },
+      "p50": {
+       "est": 9.735,
+       "lo": 9.403313,
+       "hi": 10.154
+      },
+      "p95": {
+       "est": 15.9858,
+       "lo": 14.9,
+       "hi": 18.70025
+      }
+     },
+     "phase_wall_s": {
+      "n": 76,
+      "n_games": 30,
+      "mean": {
+       "est": 33.008026,
+       "lo": 30.91582,
+       "hi": 35.485879
+      },
+      "p50": {
+       "est": 30.618,
+       "lo": 29.734,
+       "hi": 31.955
+      },
+      "p95": {
+       "est": 55.93925,
+       "lo": 38.962878,
+       "hi": 64.843
+      }
+     },
+     "phase_wall_per_game_s": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 83.620333,
+       "lo": 75.656461,
+       "hi": 92.515443
+      },
+      "p50": {
+       "est": 81.8865,
+       "lo": 67.422,
+       "hi": 89.451
+      },
+      "p95": {
+       "est": 122.71805,
+       "lo": 98.367,
+       "hi": 151.454
+      }
+     }
+    },
+    "vote": {
+     "turn_wall_s": {
+      "n": 514,
+      "n_games": 30,
+      "mean": {
+       "est": 8.687121,
+       "lo": 8.095206,
+       "hi": 9.33602
+      },
+      "p50": {
+       "est": 7.5575,
+       "lo": 6.853,
+       "hi": 8.364
+      },
+      "p95": {
+       "est": 16.1222,
+       "lo": 14.338021,
+       "hi": 17.459925
+      }
+     },
+     "turn_model_s": {
+      "n": 514,
+      "n_games": 30,
+      "mean": {
+       "est": 11.117924,
+       "lo": 10.792875,
+       "hi": 11.440194
+      },
+      "p50": {
+       "est": 10.4165,
+       "lo": 10.163975,
+       "hi": 10.76
+      },
+      "p95": {
+       "est": 18.552,
+       "lo": 16.171,
+       "hi": 19.113
+      }
+     },
+     "phase_wall_s": {
+      "n": 76,
+      "n_games": 30,
+      "mean": {
+       "est": 15.161868,
+       "lo": 13.640593,
+       "hi": 16.670113
+      },
+      "p50": {
+       "est": 13.051,
+       "lo": 11.9375,
+       "hi": 14.54
+      },
+      "p95": {
+       "est": 31.8165,
+       "lo": 22.716,
+       "hi": 38.497
+      }
+     },
+     "phase_wall_per_game_s": {
+      "n": 30,
+      "n_games": 30,
+      "mean": {
+       "est": 38.410067,
+       "lo": 32.204982,
+       "hi": 44.542594
+      },
+      "p50": {
+       "est": 32.1535,
+       "lo": 23.1625,
+       "hi": 43.788
+      },
+      "p95": {
+       "est": 66.65725,
+       "lo": 60.621,
+       "hi": 74.289
+      }
+     }
+    }
+   },
+   "has_timings": true,
+   "asked_ahead": {
+    "k": 902,
+    "n": 1710,
+    "n_games": 30,
+    "p": 0.527485,
+    "wilson": [
+     0.503788,
+     0.55106
+    ],
+    "boot": [
+     0.518771,
+     0.535823
+    ]
+   }
+  },
+  "reliability": {
+   "step_success": {
+    "k": 1853,
+    "n": 1889,
+    "n_games": 30,
+    "p": 0.980942,
+    "wilson": [
+     0.97373,
+     0.986203
+    ],
+    "boot": [
+     0.969708,
+     0.9901
+    ]
+   },
+   "malformed_step": {
+    "k": 22,
+    "n": 1889,
+    "n_games": 30,
+    "p": 0.011646,
+    "wilson": [
+     0.007704,
+     0.017571
+    ],
+    "boot": [
+     0.006768,
+     0.017103
+    ]
+   },
+   "blocked_step_cost": {
+    "schema": {
+     "steps": 22,
+     "tokens": 98733,
+     "ms": 131114,
+     "token_share": 0.011418,
+     "ms_share": 0.013972
+    },
+    "semantics": {
+     "steps": 5,
+     "tokens": 24251,
+     "ms": 29103,
+     "token_share": 0.002804,
+     "ms_share": 0.003101
+    },
+    "directive_compliance": {
+     "steps": 9,
+     "tokens": 41266,
+     "ms": 31479,
+     "token_share": 0.004772,
+     "ms_share": 0.003355
+    }
+   },
+   "forced_terminal_by_block": {},
+   "block_reason_per_step": {
+    "schema": {
+     "k": 22,
+     "n": 1889,
+     "n_games": 30,
+     "p": 0.011646,
+     "wilson": [
+      0.007704,
+      0.017571
+     ],
+     "boot": [
+      0.006768,
+      0.017103
+     ]
+    },
+    "semantics": {
+     "k": 5,
+     "n": 1889,
+     "n_games": 30,
+     "p": 0.002647,
+     "wilson": [
+      0.001131,
+      0.006181
+     ],
+     "boot": [
+      0.000523,
+      0.005598
+     ]
+    },
+    "directive_compliance": {
+     "k": 9,
+     "n": 1889,
+     "n_games": 30,
+     "p": 0.004764,
+     "wilson": [
+      0.002509,
+      0.00903
+     ],
+     "boot": [
+      0.0,
+      0.014485
+     ]
+    }
+   },
+   "turn_rejected_and_retried": {
+    "k": 32,
+    "n": 1710,
+    "n_games": 30,
+    "p": 0.018713,
+    "wilson": [
+     0.013287,
+     0.026298
+    ],
+    "boot": [
+     0.010727,
+     0.028034
+    ]
+   },
+   "turn_forced_terminal": {
+    "k": 0,
+    "n": 1710,
+    "n_games": 30,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.002241
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "turn_fallback": {
+    "k": 0,
+    "n": 1710,
+    "n_games": 30,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.002241
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "turn_loop_broken": {
+    "k": 0,
+    "n": 1710,
+    "n_games": 30,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.002241
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "turn_timeout": {
+    "k": 6,
+    "n": 1710,
+    "n_games": 30,
+    "p": 0.003509,
+    "wilson": [
+     0.001609,
+     0.007634
+    ],
+    "boot": [
+     0.001165,
+     0.006459
+    ]
+   },
+   "turn_transport_retry": {
+    "k": 10,
+    "n": 1710,
+    "n_games": 30,
+    "p": 0.005848,
+    "wilson": [
+     0.00318,
+     0.010732
+    ],
+    "boot": [
+     0.002312,
+     0.010595
+    ]
+   },
+   "vote_turn_saydo_blocked": {
+    "k": 0,
+    "n": 514,
+    "n_games": 30,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.007418
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "games_crashed": 0,
+   "games_unusable": 0
+  },
+  "say_do": {
+   "pairs": 463,
+   "coverage": {
+    "intent": {
+     "k": 9,
+     "n": 463,
+     "n_games": 30,
+     "p": 0.019438,
+     "wilson": [
+      0.01026,
+      0.036526
+     ],
+     "boot": [
+      0.006579,
+      0.032823
+     ]
+    },
+    "accuse": {
+     "k": 2,
+     "n": 463,
+     "n_games": 30,
+     "p": 0.00432,
+     "wilson": [
+      0.001185,
+      0.015611
+     ],
+     "boot": [
+      0.0,
+      0.010776
+     ]
+    },
+    "vouch": {
+     "k": 21,
+     "n": 463,
+     "n_games": 30,
+     "p": 0.045356,
+     "wilson": [
+      0.029855,
+      0.06834
+     ],
+     "boot": [
+      0.02407,
+      0.070296
+     ]
+    },
+    "any": {
+     "k": 31,
+     "n": 463,
+     "n_games": 30,
+     "p": 0.066955,
+     "wilson": [
+      0.047567,
+      0.093469
+     ],
+     "boot": [
+      0.038853,
+      0.097348
+     ]
+    }
+   },
+   "consistent": {
+    "intent": {
+     "k": 7,
+     "n": 9,
+     "n_games": 7,
+     "p": 0.777778,
+     "wilson": [
+      0.452589,
+      0.936775
+     ],
+     "boot": [
+      0.5,
+      1.0
+     ]
+    },
+    "accuse": {
+     "k": 1,
+     "n": 2,
+     "n_games": 2,
+     "p": 0.5,
+     "wilson": [
+      0.094531,
+      0.905469
+     ],
+     "boot": [
+      null,
+      null
+     ]
+    },
+    "vouch": {
+     "k": 21,
+     "n": 21,
+     "n_games": 14,
+     "p": 1.0,
+     "wilson": [
+      0.845361,
+      1.0
+     ],
+     "boot": [
+      1.0,
+      1.0
+     ]
+    },
+    "any": {
+     "k": 28,
+     "n": 31,
+     "n_games": 15,
+     "p": 0.903226,
+     "wilson": [
+      0.751001,
+      0.966535
+     ],
+     "boot": [
+      0.777778,
+      1.0
+     ]
+    }
+   },
+   "consistent_first_ballot": {
+    "k": 28,
+    "n": 31,
+    "n_games": 15,
+    "p": 0.903226,
+    "wilson": [
+     0.751001,
+     0.966535
+    ],
+    "boot": [
+     0.777778,
+     1.0
+    ]
+   },
+   "guard_audit": {
+    "speeches_guard_reads_a_vote": 3,
+    "trigger_not_a_vote_intent": 0,
+    "vote_word_but_not_this_rounds_intent": 1,
+    "agree_with_ours": 2,
+    "saydo_blocked_votes": 0,
+    "saydo_blocked_votes_from_non_vote_trigger": 0,
+    "saydo_blocked_votes_agreeing_with_ours": 0,
+    "triggers": [
+     [
+      "会投6号",
+      1
+     ],
+     [
+      "票给5号",
+      1
+     ],
+     [
+      "投给7号",
+      1
+     ]
+    ],
+    "examples": []
+   },
+   "inconsistent_examples": [
+    {
+     "game": "g1011.json",
+     "round": 3,
+     "seat": 4,
+     "intent": 2,
+     "accuse": [],
+     "vouch": [],
+     "ballot": 3,
+     "speech": "我是4号，平民，没有夜间信息，第1、2轮我分别投了7号和1号，依据是当时的发言和票型。2号这轮只要求别人表态，自己没有给出具体怀疑对象，我觉得这种发言偏向引导，所以我倾向于今天先投2号。3号你怎么看，如果你也觉得2号可疑，我们就一起投他。"
+    },
+    {
+     "game": "g1017.json",
+     "round": 1,
+     "seat": 4,
+     "intent": 5,
+     "accuse": [],
+     "vouch": [],
+     "ballot": 2,
+     "speech": "我是4号，村民，首夜没有信息。2号首夜就跳预言家并直接查杀5号，我觉得这个节奏太快了，今天就全票出5号证据还不够。我不排除2号有问题，也不排除有狼在利用这个查杀带票，建议大家先听后面玩家的发言，再决定要不要跟票。"
+    },
+    {
+     "game": "g1025.json",
+     "round": 3,
+     "seat": 2,
+     "intent": null,
+     "accuse": [
+      1
+     ],
+     "vouch": [],
+     "ballot": 7,
+     "speech": "我是2号村民，没有夜间信息。现在只剩4人，狼有2匹，如果这轮再投错，狼就和好人同数并获胜，所以我们必须投准。1号的发言只是泛泛而谈，没有给出具体怀疑对象，请1号说清楚自己认为谁最可疑。3号和7号也请说明你们的立场和理由，我会在听完之后再决定投票。"
+    }
+   ]
+  },
+  "seer": {
+   "seer_claims_seer": {
+    "k": 29,
+    "n": 30,
+    "p": 0.966667,
+    "wilson": [
+     0.833296,
+     0.994091
+    ]
+   },
+   "seer_check_honest": {
+    "k": 29,
+    "n": 29,
+    "n_games": 29,
+    "p": 1.0,
+    "wilson": [
+     0.88303,
+     1.0
+    ],
+    "boot": [
+     1.0,
+     1.0
+    ]
+   },
+   "seer_check_breakdown": {
+    "honest": 29
+   },
+   "fake_claim_matches_truth": {
+    "k": 0,
+    "n": 0,
+    "n_games": 0,
+    "p": null,
+    "wilson": [
+     null,
+     null
+    ],
+    "boot": [
+     null,
+     null
+    ]
+   },
+   "fake_claim_rows": [],
+   "seer_claimants_by_role": {
+    "seer": 29
+   },
+   "wolf_fake_seer_games": {
+    "k": 0,
+    "n": 30,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.113513
+    ]
+   },
+   "wolf_seats_fake_seer": {
+    "k": 0,
+    "n": 60,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.060172
+    ]
+   },
+   "self_claim_true": {
+    "village": {
+     "k": 153,
+     "n": 155,
+     "n_games": 30,
+     "p": 0.987097,
+     "wilson": [
+      0.954179,
+      0.996454
+     ],
+     "boot": [
+      0.967944,
+      1.0
+     ]
+    },
+    "werewolf": {
+     "k": 0,
+     "n": 37,
+     "n_games": 23,
+     "p": 0.0,
+     "wilson": [
+      0.0,
+      0.094058
+     ],
+     "boot": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "fake_examples": []
+  },
+  "leakage": {
+   "assertions": 2,
+   "speeches": 463,
+   "by_basis": {
+    "public_basis": 2
+   },
+   "unsupported_correct": {
+    "k": 0,
+    "n": 0,
+    "n_games": 0,
+    "p": null,
+    "wilson": [
+     null,
+     null
+    ],
+    "boot": [
+     null,
+     null
+    ]
+   },
+   "unsupported_chance_mean": null,
+   "special_role_unsupported_correct": {
+    "k": 0,
+    "n": 0
+   },
+   "wolf_self_exposure": 0,
+   "wolf_vouch_teammate": 0,
+   "leak_candidates": []
+  },
+  "structural_leak": {
+   "night1_kill_hits_seer": {
+    "k": 6,
+    "n": 30,
+    "n_games": 30,
+    "p": 0.2,
+    "wilson": [
+     0.095051,
+     0.373057
+    ],
+    "boot": [
+     0.066667,
+     0.333333
+    ]
+   },
+   "night1_chance": 0.166667,
+   "blind_day1_ballot_hits_wolf": {
+    "k": 54,
+    "n": 135,
+    "n_games": 26,
+    "p": 0.4,
+    "wilson": [
+     0.321232,
+     0.484302
+    ],
+    "boot": [
+     0.265818,
+     0.538474
+    ]
+   },
+   "blind_day1_chance": 0.399224,
+   "blind_day1_games": 26
+  },
+  "hallucination": {
+   "speeches_with_unsupported_citation": {
+    "k": 7,
+    "n": 463,
+    "n_games": 30,
+    "p": 0.015119,
+    "wilson": [
+     0.007342,
+     0.030875
+    ],
+    "boot": [
+     0.006479,
+     0.025052
+    ]
+   },
+   "citations": 7,
+   "per_100_speeches": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 1.395737,
+     "lo": 0.545809,
+     "hi": 2.369282
+    },
+    "p50": {
+     "est": 0.0,
+     "lo": 0.0,
+     "hi": 0.0
+    },
+    "p95": {
+     "est": 6.928571,
+     "lo": 4.940191,
+     "hi": 7.142857
+    }
+   },
+   "kinds": {
+    "no_lookup": 7
+   }
+  },
+  "outcome": {
+   "village_wins": 14,
+   "n": 30,
+   "village_win_rate": 0.466667,
+   "wilson": [
+    0.302324,
+    0.638577
+   ],
+   "werewolf_win_rate": 0.533333,
+   "werewolf_wilson": [
+    0.361423,
+    0.697676
+   ],
+   "rounds": {
+    "n": 30,
+    "n_games": 30,
+    "mean": {
+     "est": 3.0,
+     "lo": 2.733333,
+     "hi": 3.266667
+    },
+    "p50": {
+     "est": 3.0,
+     "lo": 3.0,
+     "hi": 3.0
+    },
+    "p95": {
+     "est": 4.0,
+     "lo": 4.0,
+     "hi": 4.0
+    }
+   }
+  }
+ },
+ "compare": {
+  "before": {
+   "meta": {
+    "games": 30,
+    "models": [
+     "claude-cli:haiku"
+    ],
+    "variants": [
+     "8p"
+    ],
+    "seeds": [
+     1001,
+     1002,
+     1003,
+     1004,
+     1005,
+     1006,
+     1007,
+     1008,
+     1009,
+     1010,
+     1011,
+     1012,
+     1013,
+     1014,
+     1015,
+     1016,
+     1017,
+     1018,
+     1019,
+     1020,
+     1021,
+     1022,
+     1023,
+     1024,
+     1025,
+     1026,
+     1027,
+     1028,
+     1029,
+     1030
+    ],
+    "parallel": [
+     8
+    ],
+    "turns": 1650,
+    "aligned": true,
+    "date_range": [
+     "2026-10-14T15:47",
+     "2026-10-14T17:26"
+    ]
+   },
+   "latency": {
+    "call_ms": {
+     "n": 2183,
+     "n_games": 30,
+     "mean": {
+      "est": 4609.154833,
+      "lo": 4481.322405,
+      "hi": 4753.909679
+     },
+     "p50": {
+      "est": 4412.0,
+      "lo": 4288.0,
+      "hi": 4562.0
+     },
+     "p95": {
+      "est": 7921.4,
+      "lo": 7536.96,
+      "hi": 8263.4825
+     }
+    },
+    "note_ms": {
+     "n": 1650,
+     "n_games": 30,
+     "mean": {
+      "est": 4940.042424,
+      "lo": 4862.545502,
+      "hi": 5020.225272
+     },
+     "p50": {
+      "est": 4765.0,
+      "lo": 4685.0,
+      "hi": 4843.0
+     },
+     "p95": {
+      "est": 7607.0,
+      "lo": 7203.37,
+      "hi": 7816.2075
+     }
+    },
+    "turn_model_s": {
+     "n": 1650,
+     "n_games": 30,
+     "mean": {
+      "est": 11.038094,
+      "lo": 10.656663,
+      "hi": 11.450596
+     },
+     "p50": {
+      "est": 9.911,
+      "lo": 9.705,
+      "hi": 10.1142
+     },
+     "p95": {
+      "est": 19.0724,
+      "lo": 17.255921,
+      "hi": 21.061569
+     }
+    },
+    "turn_wall_s": {
+     "n": 1650,
+     "n_games": 30,
+     "mean": {
+      "est": 8.976514,
+      "lo": 8.236727,
+      "hi": 9.777018
+     },
+     "p50": {
+      "est": 6.3835,
+      "lo": 6.044,
+      "hi": 6.852013
+     },
+     "p95": {
+      "est": 35.67,
+      "lo": 18.935,
+      "hi": 38.36789
+     }
+    },
+    "game_s": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 202.753813,
+      "lo": 185.209049,
+      "hi": 222.220431
+     },
+     "p50": {
+      "est": 190.180598,
+      "lo": 175.791876,
+      "hi": 218.089432
+     },
+     "p95": {
+      "est": 298.289628,
+      "lo": 255.14336,
+      "hi": 318.655976
+     }
+    },
+    "by_task": {
+     "night": {
+      "turn_wall_s": {
+       "n": 248,
+       "n_games": 30,
+       "mean": {
+        "est": 4.602101,
+        "lo": 4.297258,
+        "hi": 4.928589
+       },
+       "p50": {
+        "est": 3.11,
+        "lo": 2.971,
+        "hi": 3.2495
+       },
+       "p95": {
+        "est": 12.55485,
+        "lo": 10.83715,
+        "hi": 14.036354
+       }
+      },
+      "turn_model_s": {
+       "n": 248,
+       "n_games": 30,
+       "mean": {
+        "est": 7.874198,
+        "lo": 7.518632,
+        "hi": 8.284506
+       },
+       "p50": {
+        "est": 6.7465,
+        "lo": 6.447,
+        "hi": 7.012
+       },
+       "p95": {
+        "est": 15.6172,
+        "lo": 12.601,
+        "hi": 18.137038
+       }
+      },
+      "phase_wall_s": {
+       "n": 84,
+       "n_games": 30,
+       "mean": {
+        "est": 11.762464,
+        "lo": 10.772844,
+        "hi": 12.819885
+       },
+       "p50": {
+        "est": 10.531,
+        "lo": 9.9565,
+        "hi": 11.289
+       },
+       "p95": {
+        "est": 20.1378,
+        "lo": 15.90225,
+        "hi": 23.6947
+       }
+      },
+      "phase_wall_per_game_s": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 32.9349,
+        "lo": 28.870912,
+        "hi": 36.918601
+       },
+       "p50": {
+        "est": 32.942,
+        "lo": 28.087,
+        "hi": 37.3165
+       },
+       "p95": {
+        "est": 50.21,
+        "lo": 42.1904,
+        "hi": 61.781
+       }
+      }
+     },
+     "review": {
+      "turn_wall_s": {
+       "n": 480,
+       "n_games": 30,
+       "mean": {
+        "est": 10.149408,
+        "lo": 9.012298,
+        "hi": 11.892951
+       },
+       "p50": {
+        "est": 9.2985,
+        "lo": 8.621,
+        "hi": 9.597
+       },
+       "p95": {
+        "est": 15.104,
+        "lo": 12.94365,
+        "hi": 35.8048
+       }
+      },
+      "turn_model_s": {
+       "n": 480,
+       "n_games": 30,
+       "mean": {
+        "est": 11.05191,
+        "lo": 10.814927,
+        "hi": 11.286079
+       },
+       "p50": {
+        "est": 10.6535,
+        "lo": 10.4294,
+        "hi": 10.942075
+       },
+       "p95": {
+        "est": 14.9074,
+        "lo": 14.514,
+        "hi": 15.7625
+       }
+      },
+      "phase_wall_s": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 25.362633,
+        "lo": 22.370282,
+        "hi": 30.034215
+       },
+       "p50": {
+        "est": 22.5435,
+        "lo": 21.668,
+        "hi": 23.6245
+       },
+       "p95": {
+        "est": 39.66945,
+        "lo": 26.00025,
+        "hi": 74.037
+       }
+      },
+      "phase_wall_per_game_s": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 25.362633,
+        "lo": 22.370282,
+        "hi": 30.034215
+       },
+       "p50": {
+        "est": 22.5435,
+        "lo": 21.668,
+        "hi": 23.6245
+       },
+       "p95": {
+        "est": 39.66945,
+        "lo": 26.00025,
+        "hi": 74.037
+       }
+      }
+     },
+     "speak": {
+      "turn_wall_s": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 5.195443,
+        "lo": 4.878234,
+        "hi": 5.559065
+       },
+       "p50": {
+        "est": 4.526,
+        "lo": 4.348,
+        "hi": 4.667
+       },
+       "p95": {
+        "est": 9.428,
+        "lo": 8.432281,
+        "hi": 10.698
+       }
+      },
+      "turn_model_s": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 10.431985,
+        "lo": 10.055042,
+        "hi": 10.830454
+       },
+       "p50": {
+        "est": 9.712,
+        "lo": 9.465,
+        "hi": 10.100175
+       },
+       "p95": {
+        "est": 16.296,
+        "lo": 15.512606,
+        "hi": 17.922003
+       }
+      },
+      "phase_wall_s": {
+       "n": 74,
+       "n_games": 30,
+       "mean": {
+        "est": 32.366527,
+        "lo": 30.727961,
+        "hi": 34.258504
+       },
+       "p50": {
+        "est": 31.477,
+        "lo": 29.588,
+        "hi": 33.109
+       },
+       "p95": {
+        "est": 40.67755,
+        "lo": 36.7388,
+        "hi": 59.717
+       }
+      },
+      "phase_wall_per_game_s": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 79.837433,
+        "lo": 71.598305,
+        "hi": 89.134428
+       },
+       "p50": {
+        "est": 69.4685,
+        "lo": 63.5065,
+        "hi": 87.374
+       },
+       "p95": {
+        "est": 131.6617,
+        "lo": 97.443,
+        "hi": 149.581
+       }
+      }
+     },
+     "vote": {
+      "turn_wall_s": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 13.889614,
+        "lo": 11.821727,
+        "hi": 15.998301
+       },
+       "p50": {
+        "est": 7.368,
+        "lo": 6.92,
+        "hi": 9.1
+       },
+       "p95": {
+        "est": 42.22,
+        "lo": 39.72,
+        "hi": 43.176
+       }
+      },
+      "turn_model_s": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 13.33187,
+        "lo": 12.261501,
+        "hi": 14.449943
+       },
+       "p50": {
+        "est": 10.113,
+        "lo": 9.565463,
+        "hi": 10.513588
+       },
+       "p95": {
+        "est": 36.803,
+        "lo": 34.105,
+        "hi": 39.396
+       }
+      },
+      "phase_wall_s": {
+       "n": 74,
+       "n_games": 30,
+       "mean": {
+        "est": 24.13023,
+        "lo": 20.26194,
+        "hi": 28.06611
+       },
+       "p50": {
+        "est": 16.616,
+        "lo": 11.59,
+        "hi": 31.594
+       },
+       "p95": {
+        "est": 50.88675,
+        "lo": 44.550641,
+        "hi": 52.404
+       }
+      },
+      "phase_wall_per_game_s": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 59.521233,
+        "lo": 48.953532,
+        "hi": 71.163868
+       },
+       "p50": {
+        "est": 50.8415,
+        "lo": 47.9375,
+        "hi": 70.351137
+       },
+       "p95": {
+        "est": 117.65465,
+        "lo": 84.941,
+        "hi": 132.38
+       }
+      }
+     }
+    },
+    "has_timings": true,
+    "asked_ahead": {
+     "k": 866,
+     "n": 1650,
+     "n_games": 30,
+     "p": 0.524848,
+     "wilson": [
+      0.500723,
+      0.548859
+     ],
+     "boot": [
+      0.517302,
+      0.532704
+     ]
+    }
+   },
+   "cost": {
+    "tokens_per_game_local": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 346046.4,
+      "lo": 324949.0925,
+      "hi": 370110.819167
+     },
+     "p50": {
+      "est": 332545.0,
+      "lo": 308650.5,
+      "hi": 362489.0
+     },
+     "p95": {
+      "est": 452839.3,
+      "lo": 401827.0,
+      "hi": 491535.0
+     }
+    },
+    "tokens_per_game_cli": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 563338.9,
+      "lo": 529204.150833,
+      "hi": 601365.680833
+     },
+     "p50": {
+      "est": 543902.5,
+      "lo": 496780.5,
+      "hi": 596372.5
+     },
+     "p95": {
+      "est": 736160.35,
+      "lo": 644706.0,
+      "hi": 796950.0
+     }
+    },
+    "prompt_per_game_cli": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 477894.333333,
+      "lo": 448726.240833,
+      "hi": 510815.2625
+     },
+     "p50": {
+      "est": 462634.5,
+      "lo": 424505.5,
+      "hi": 503933.5
+     },
+     "p95": {
+      "est": 623852.7,
+      "lo": 554223.0,
+      "hi": 680962.0
+     }
+    },
+    "completion_per_game_cli": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 85444.566667,
+      "lo": 79902.935833,
+      "hi": 91340.79
+     },
+     "p50": {
+      "est": 83113.5,
+      "lo": 76280.0,
+      "hi": 89657.5
+     },
+     "p95": {
+      "est": 116107.9,
+      "lo": 100121.55,
+      "hi": 122214.0
+     }
+    },
+    "calls_per_game": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 127.766667,
+      "lo": 121.266667,
+      "hi": 134.966667
+     },
+     "p50": {
+      "est": 125.0,
+      "lo": 114.0,
+      "hi": 134.5
+     },
+     "p95": {
+      "est": 160.1,
+      "lo": 143.0,
+      "hi": 174.0
+     }
+    },
+    "turns_per_game": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 55.0,
+      "lo": 52.933333,
+      "hi": 57.1675
+     },
+     "p50": {
+      "est": 53.0,
+      "lo": 52.0,
+      "hi": 60.0
+     },
+     "p95": {
+      "est": 61.55,
+      "lo": 60.53625,
+      "hi": 73.0
+     }
+    },
+    "tokens_per_call_cli": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 4391.371424,
+      "lo": 4343.406987,
+      "hi": 4440.436466
+     },
+     "p50": {
+      "est": 4393.662634,
+      "lo": 4309.465131,
+      "hi": 4451.460583
+     },
+     "p95": {
+      "est": 4613.049913,
+      "lo": 4524.653896,
+      "hi": 4646.93038
+     }
+    },
+    "tokens_per_call_local": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 2697.631908,
+      "lo": 2664.00743,
+      "hi": 2732.616361
+     },
+     "p50": {
+      "est": 2711.810504,
+      "lo": 2635.277543,
+      "hi": 2734.796422
+     },
+     "p95": {
+      "est": 2840.514919,
+      "lo": 2813.558844,
+      "hi": 2864.518987
+     }
+    },
+    "cli_over_local": {
+     "n": 30,
+     "n_games": 30,
+     "mean": {
+      "est": 1.628311,
+      "lo": 1.619919,
+      "hi": 1.6373
+     },
+     "p50": {
+      "est": 1.625358,
+      "lo": 1.617995,
+      "hi": 1.635657
+     },
+     "p95": {
+      "est": 1.673811,
+      "lo": 1.643544,
+      "hi": 1.702156
+     }
+    },
+    "calls_accounted": true,
+    "turn_sum_equals_cli": false,
+    "turn_sum_equal_games": 10,
+    "turn_sum_over_cli_min": 0.967163,
+    "by_task": {
+     "night": {
+      "tokens_per_turn": {
+       "n": 248,
+       "n_games": 30,
+       "mean": {
+        "est": 7551.346774,
+        "lo": 7343.188473,
+        "hi": 7773.794644
+       },
+       "p50": {
+        "est": 6210.0,
+        "lo": 6054.0,
+        "hi": 6356.0
+       },
+       "p95": {
+        "est": 11977.25,
+        "lo": 11660.0,
+        "hi": 13151.30125
+       }
+      },
+      "calls_per_turn": {
+       "n": 248,
+       "n_games": 30,
+       "mean": {
+        "est": 2.322581,
+        "lo": 2.281743,
+        "hi": 2.364706
+       },
+       "p50": {
+        "est": 2.0,
+        "lo": 2.0,
+        "hi": 2.0
+       },
+       "p95": {
+        "est": 3.0,
+        "lo": 3.0,
+        "hi": 3.0
+       }
+      },
+      "tokens_per_game": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 62424.466667,
+        "lo": 57457.056667,
+        "hi": 67361.6225
+       },
+       "p50": {
+        "est": 62932.0,
+        "lo": 59936.0,
+        "hi": 68545.5
+       },
+       "p95": {
+        "est": 84475.05,
+        "lo": 73266.3,
+        "hi": 91489.0
+       }
+      },
+      "share_of_tokens": 0.112375
+     },
+     "review": {
+      "tokens_per_turn": {
+       "n": 480,
+       "n_games": 30,
+       "mean": {
+        "est": 10033.222917,
+        "lo": 9927.664271,
+        "hi": 10149.402656
+       },
+       "p50": {
+        "est": 10473.0,
+        "lo": 10320.0,
+        "hi": 10582.0
+       },
+       "p95": {
+        "est": 12159.05,
+        "lo": 11983.65,
+        "hi": 12450.0
+       }
+      },
+      "calls_per_turn": {
+       "n": 480,
+       "n_games": 30,
+       "mean": {
+        "est": 2.002083,
+        "lo": 2.0,
+        "hi": 2.00625
+       },
+       "p50": {
+        "est": 2.0,
+        "lo": 2.0,
+        "hi": 2.0
+       },
+       "p95": {
+        "est": 2.0,
+        "lo": 2.0,
+        "hi": 2.0
+       }
+      },
+      "tokens_per_game": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 160531.566667,
+        "lo": 158842.628333,
+        "hi": 162390.4425
+       },
+       "p50": {
+        "est": 161356.5,
+        "lo": 160210.5,
+        "hi": 161682.5
+       },
+       "p95": {
+        "est": 166087.45,
+        "lo": 163434.6,
+        "hi": 177165.0
+       }
+      },
+      "share_of_tokens": 0.288985
+     },
+     "speak": {
+      "tokens_per_turn": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 7802.583514,
+        "lo": 7683.455171,
+        "hi": 7915.740823
+       },
+       "p50": {
+        "est": 7502.0,
+        "lo": 7408.0,
+        "hi": 7676.0
+       },
+       "p95": {
+        "est": 10521.0,
+        "lo": 10121.78,
+        "hi": 11400.0
+       }
+      },
+      "calls_per_turn": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 2.039046,
+        "lo": 2.023964,
+        "hi": 2.054855
+       },
+       "p50": {
+        "est": 2.0,
+        "lo": 2.0,
+        "hi": 2.0
+       },
+       "p95": {
+        "est": 2.0,
+        "lo": 2.0,
+        "hi": 3.0
+       }
+      },
+      "tokens_per_game": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 119899.7,
+        "lo": 111459.629167,
+        "hi": 128749.431667
+       },
+       "p50": {
+        "est": 110738.0,
+        "lo": 104868.5,
+        "hi": 140035.0
+       },
+       "p95": {
+        "est": 151289.35,
+        "lo": 143032.76625,
+        "hi": 189140.0
+       }
+      },
+      "share_of_tokens": 0.21584
+     },
+     "vote": {
+      "tokens_per_turn": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 13838.130152,
+        "lo": 12482.505154,
+        "hi": 15236.154653
+       },
+       "p50": {
+        "est": 9178.0,
+        "lo": 8989.0,
+        "hi": 9328.6
+       },
+       "p95": {
+        "est": 47401.0,
+        "lo": 45933.16,
+        "hi": 48838.245
+       }
+      },
+      "calls_per_turn": {
+       "n": 461,
+       "n_games": 30,
+       "mean": {
+        "est": 2.941432,
+        "lo": 2.667373,
+        "hi": 3.227481
+       },
+       "p50": {
+        "est": 2.0,
+        "lo": 2.0,
+        "hi": 2.0
+       },
+       "p95": {
+        "est": 10.0,
+        "lo": 10.0,
+        "hi": 10.0
+       }
+      },
+      "tokens_per_game": {
+       "n": 30,
+       "n_games": 30,
+       "mean": {
+        "est": 212645.933333,
+        "lo": 189279.520833,
+        "hi": 239831.243333
+       },
+       "p50": {
+        "est": 199633.5,
+        "lo": 176386.0,
+        "hi": 226143.0
+       },
+       "p95": {
+        "est": 349266.95,
+        "lo": 272094.9,
+        "hi": 394949.0
+       }
+      },
+      "share_of_tokens": 0.3828
+     }
+    },
+    "per_game": [
+     {
+      "local": 285954,
+      "local_prompt": 262552,
+      "local_completion": 23402,
+      "cli": 461713,
+      "cli_prompt": 393747,
+      "cli_completion": 67966,
+      "turn_sum": 461713,
+      "calls": 109,
+      "calls_est": 109,
+      "turns": 53
+     },
+     {
+      "local": 339788,
+      "local_prompt": 312728,
+      "local_completion": 27060,
+      "cli": 557825,
+      "cli_prompt": 470141,
+      "cli_completion": 87684,
+      "turn_sum": 557825,
+      "calls": 130,
+      "calls_est": 130,
+      "turns": 60
+     },
+     {
+      "local": 287570,
+      "local_prompt": 263359,
+      "local_completion": 24211,
+      "cli": 484994,
+      "cli_prompt": 398227,
+      "cli_completion": 86767,
+      "turn_sum": 484994,
+      "calls": 113,
+      "calls_est": 113,
+      "turns": 53
+     },
+     {
+      "local": 333755,
+      "local_prompt": 306260,
+      "local_completion": 27495,
+      "cli": 568103,
+      "cli_prompt": 464903,
+      "cli_completion": 103200,
+      "turn_sum": 568103,
+      "calls": 129,
+      "calls_est": 129,
+      "turns": 62
+     },
+     {
+      "local": 303200,
+      "local_prompt": 278842,
+      "local_completion": 24358,
+      "cli": 485980,
+      "cli_prompt": 418517,
+      "cli_completion": 67463,
+      "turn_sum": 475662,
+      "calls": 114,
+      "calls_est": 114,
+      "turns": 46
+     },
+     {
+      "local": 291124,
+      "local_prompt": 268477,
+      "local_completion": 22647,
+      "cli": 478475,
+      "cli_prompt": 404333,
+      "cli_completion": 74142,
+      "turn_sum": 478475,
+      "calls": 112,
+      "calls_est": 112,
+      "turns": 54
+     },
+     {
+      "local": 287394,
+      "local_prompt": 263842,
+      "local_completion": 23552,
+      "cli": 466836,
+      "cli_prompt": 397602,
+      "cli_completion": 69234,
+      "turn_sum": 462190,
+      "calls": 110,
+      "calls_est": 110,
+      "turns": 51
+     },
+     {
+      "local": 330202,
+      "local_prompt": 301989,
+      "local_completion": 28213,
+      "cli": 541942,
+      "cli_prompt": 458051,
+      "cli_completion": 83891,
+      "turn_sum": 541942,
+      "calls": 126,
+      "calls_est": 126,
+      "turns": 61
+     },
+     {
+      "local": 453040,
+      "local_prompt": 417555,
+      "local_completion": 35485,
+      "cli": 737752,
+      "cli_prompt": 621546,
+      "cli_completion": 116206,
+      "turn_sum": 720598,
+      "calls": 159,
+      "calls_est": 159,
+      "turns": 60
+     },
+     {
+      "local": 272201,
+      "local_prompt": 250192,
+      "local_completion": 22009,
+      "cli": 444603,
+      "cli_prompt": 377207,
+      "cli_completion": 67396,
+      "turn_sum": 444603,
+      "calls": 106,
+      "calls_est": 106,
+      "turns": 51
+     },
+     {
+      "local": 314101,
+      "local_prompt": 289111,
+      "local_completion": 24990,
+      "cli": 500612,
+      "cli_prompt": 430494,
+      "cli_completion": 70118,
+      "turn_sum": 489550,
+      "calls": 114,
+      "calls_est": 114,
+      "turns": 46
+     },
+     {
+      "local": 330900,
+      "local_prompt": 304040,
+      "local_completion": 26860,
+      "cli": 526772,
+      "cli_prompt": 452783,
+      "cli_completion": 73989,
+      "turn_sum": 521109,
+      "calls": 122,
+      "calls_est": 122,
+      "turns": 55
+     },
+     {
+      "local": 338342,
+      "local_prompt": 311503,
+      "local_completion": 26839,
+      "cli": 545103,
+      "cli_prompt": 466685,
+      "cli_completion": 78418,
+      "turn_sum": 534562,
+      "calls": 124,
+      "calls_est": 124,
+      "turns": 51
+     },
+     {
+      "local": 355166,
+      "local_prompt": 328700,
+      "local_completion": 26466,
+      "cli": 564903,
+      "cli_prompt": 484460,
+      "cli_completion": 80443,
+      "turn_sum": 553298,
+      "calls": 126,
+      "calls_est": 126,
+      "turns": 53
+     },
+     {
+      "local": 396244,
+      "local_prompt": 366932,
+      "local_completion": 29312,
+      "cli": 635300,
+      "cli_prompt": 542046,
+      "cli_completion": 93254,
+      "turn_sum": 623677,
+      "calls": 141,
+      "calls_est": 141,
+      "turns": 60
+     },
+     {
+      "local": 241266,
+      "local_prompt": 219790,
+      "local_completion": 21476,
+      "cli": 394081,
+      "cli_prompt": 335265,
+      "cli_completion": 58816,
+      "turn_sum": 394081,
+      "calls": 95,
+      "calls_est": 95,
+      "turns": 46
+     },
+     {
+      "local": 358949,
+      "local_prompt": 331201,
+      "local_completion": 27748,
+      "cli": 592645,
+      "cli_prompt": 496599,
+      "cli_completion": 96046,
+      "turn_sum": 587111,
+      "calls": 134,
+      "calls_est": 134,
+      "turns": 61
+     },
+     {
+      "local": 302468,
+      "local_prompt": 278144,
+      "local_completion": 24324,
+      "cli": 486228,
+      "cli_prompt": 414667,
+      "cli_completion": 71561,
+      "turn_sum": 475032,
+      "calls": 111,
+      "calls_est": 111,
+      "turns": 46
+     },
+     {
+      "local": 422441,
+      "local_prompt": 390677,
+      "local_completion": 31764,
+      "cli": 685788,
+      "cli_prompt": 584508,
+      "cli_completion": 101280,
+      "turn_sum": 668857,
+      "calls": 150,
+      "calls_est": 150,
+      "turns": 60
+     },
+     {
+      "local": 375565,
+      "local_prompt": 348316,
+      "local_completion": 27249,
+      "cli": 605818,
+      "cli_prompt": 520766,
+      "cli_completion": 85052,
+      "turn_sum": 589669,
+      "calls": 136,
+      "calls_est": 136,
+      "turns": 53
+     },
+     {
+      "local": 331335,
+      "local_prompt": 306056,
+      "local_completion": 25279,
+      "cli": 542702,
+      "cli_prompt": 460366,
+      "cli_completion": 82336,
+      "turn_sum": 531711,
+      "calls": 122,
+      "calls_est": 122,
+      "turns": 51
+     },
+     {
+      "local": 321016,
+      "local_prompt": 295503,
+      "local_completion": 25513,
+      "cli": 522081,
+      "cli_prompt": 442768,
+      "cli_completion": 79313,
+      "turn_sum": 516611,
+      "calls": 120,
+      "calls_est": 120,
+      "turns": 53
+     },
+     {
+      "local": 266846,
+      "local_prompt": 244508,
+      "local_completion": 22338,
+      "cli": 432901,
+      "cli_prompt": 368504,
+      "cli_completion": 64397,
+      "turn_sum": 432901,
+      "calls": 104,
+      "calls_est": 104,
+      "turns": 51
+     },
+     {
+      "local": 491535,
+      "local_prompt": 456328,
+      "local_completion": 35207,
+      "cli": 796950,
+      "cli_prompt": 680962,
+      "cli_completion": 115988,
+      "turn_sum": 780733,
+      "calls": 174,
+      "calls_est": 174,
+      "turns": 61
+     },
+     {
+      "local": 401827,
+      "local_prompt": 372135,
+      "local_completion": 29692,
+      "cli": 644706,
+      "cli_prompt": 554223,
+      "cli_completion": 90483,
+      "turn_sum": 628649,
+      "calls": 142,
+      "calls_est": 142,
+      "turns": 55
+     },
+     {
+      "local": 366029,
+      "local_prompt": 337297,
+      "local_completion": 28732,
+      "cli": 600100,
+      "cli_prompt": 511268,
+      "cli_completion": 88832,
+      "turn_sum": 594683,
+      "calls": 135,
+      "calls_est": 135,
+      "turns": 60
+     },
+     {
+      "local": 299125,
+      "local_prompt": 273165,
+      "local_completion": 25960,
+      "cli": 492949,
+      "cli_prompt": 410935,
+      "cli_completion": 82014,
+      "turn_sum": 492949,
+      "calls": 113,
+      "calls_est": 113,
+      "turns": 51
+     },
+     {
+      "local": 390556,
+      "local_prompt": 360850,
+      "local_completion": 29706,
+      "cli": 637026,
+      "cli_prompt": 540667,
+      "cli_completion": 96359,
+      "turn_sum": 616108,
+      "calls": 143,
+      "calls_est": 143,
+      "turns": 53
+     },
+     {
+      "local": 440859,
+      "local_prompt": 405798,
+      "local_completion": 35061,
+      "cli": 731064,
+      "cli_prompt": 608850,
+      "cli_completion": 122214,
+      "turn_sum": 725688,
+      "calls": 161,
+      "calls_est": 161,
+      "turns": 73
+     },
+     {
+      "local": 452594,
+      "local_prompt": 420043,
+      "local_completion": 32551,
+      "cli": 734215,
+      "cli_prompt": 625740,
+      "cli_completion": 108475,
+      "turn_sum": 711966,
+      "calls": 158,
+      "calls_est": 158,
+      "turns": 60
+     }
+    ]
+   }
+  }
+ }
+}

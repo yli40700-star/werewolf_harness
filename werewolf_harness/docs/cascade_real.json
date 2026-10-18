@@ -1,0 +1,2088 @@
+{
+ "meta": {
+  "cheap": "claude-cli:haiku",
+  "strong": "claude-cli:sonnet",
+  "arms": [
+   "strong",
+   "cheap",
+   "cascade"
+  ],
+  "variant": "8p",
+  "parallel": 8,
+  "cascade_mode": "both",
+  "low_confidence": false,
+  "seeds": [
+   2001,
+   2002,
+   2003,
+   2004,
+   2005,
+   2006,
+   2007,
+   2008,
+   2009,
+   2010
+  ],
+  "seeds_label": "2001–2010（10 个）",
+  "prices": {
+   "claude-cli:sonnet": [
+    2.0,
+    10.0
+   ],
+   "claude-cli:haiku": [
+    0.1,
+    0.5
+   ]
+  },
+  "mock": false
+ },
+ "arms": {
+  "strong": {
+   "games": 10,
+   "models": [
+    "claude-cli:sonnet"
+   ],
+   "usd": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 1.112148,
+     "lo": 1.021581,
+     "hi": 1.207853
+    },
+    "p50": {
+     "est": 1.099166,
+     "lo": 0.977498,
+     "hi": 1.24884
+    },
+    "p95": {
+     "est": 1.351183,
+     "lo": 1.155922,
+     "hi": 1.358894
+    }
+   },
+   "cheap_eq_tokens": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 9124372.0,
+     "lo": 8514468.45,
+     "hi": 9751881.75
+    },
+    "p50": {
+     "est": 9052670.0,
+     "lo": 8316900.0,
+     "hi": 9986639.0
+    },
+    "p95": {
+     "est": 10611136.0,
+     "lo": 9654320.0,
+     "hi": 10670140.0
+    }
+   },
+   "tokens_cli": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 456218.6,
+     "lo": 425723.4225,
+     "hi": 487594.0875
+    },
+    "p50": {
+     "est": 452633.5,
+     "lo": 415845.0,
+     "hi": 499331.95
+    },
+    "p95": {
+     "est": 530556.8,
+     "lo": 482716.0,
+     "hi": 533507.0
+    }
+   },
+   "tokens_by_model": {
+    "claude-cli:sonnet": 4562186
+   },
+   "legal": {
+    "k": 546,
+    "n": 548,
+    "n_games": 10,
+    "p": 0.99635,
+    "wilson": [
+     0.986792,
+     0.998999
+    ],
+    "boot": [
+     0.991103,
+     1.0
+    ]
+   },
+   "clean": {
+    "k": 518,
+    "n": 548,
+    "n_games": 10,
+    "p": 0.945255,
+    "wilson": [
+     0.922925,
+     0.961387
+    ],
+    "boot": [
+     0.922523,
+     0.965651
+    ]
+   },
+   "fallback": {
+    "k": 0,
+    "n": 548,
+    "n_games": 10,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.006961
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "guard_block": {
+    "k": 9,
+    "n": 548,
+    "n_games": 10,
+    "p": 0.016423,
+    "wilson": [
+     0.008664,
+     0.030915
+    ],
+    "boot": [
+     0.003697,
+     0.035449
+    ]
+   },
+   "step_success": {
+    "k": 568,
+    "n": 620,
+    "n_games": 10,
+    "p": 0.916129,
+    "wilson": [
+     0.891664,
+     0.935469
+    ],
+    "boot": [
+     0.876542,
+     0.95361
+    ]
+   },
+   "escalated": {
+    "k": 0,
+    "n": 548,
+    "n_games": 10,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.006961
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "strong_turns": {
+    "k": 0,
+    "n": 548,
+    "n_games": 10,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.006961
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "escalation_by_reason": {},
+   "say_do": {
+    "k": 35,
+    "n": 37,
+    "n_games": 9,
+    "p": 0.945946,
+    "wilson": [
+     0.822953,
+     0.985049
+    ],
+    "boot": [
+     0.886347,
+     1.0
+    ]
+   },
+   "hallucinated": {
+    "k": 2,
+    "n": 148,
+    "n_games": 10,
+    "p": 0.013514,
+    "wilson": [
+     0.003714,
+     0.047929
+    ],
+    "boot": [
+     0.0,
+     0.03268
+    ]
+   },
+   "outcome": {
+    "village_wins": 7,
+    "n": 10,
+    "village_win_rate": 0.7,
+    "wilson": [
+     0.396778,
+     0.892209
+    ],
+    "werewolf_win_rate": 0.3,
+    "werewolf_wilson": [
+     0.107791,
+     0.603222
+    ],
+    "rounds": {
+     "n": 10,
+     "n_games": 10,
+     "mean": {
+      "est": 2.7,
+      "lo": 2.4,
+      "hi": 2.9
+     },
+     "p50": {
+      "est": 3.0,
+      "lo": 2.0,
+      "hi": 3.0
+     },
+     "p95": {
+      "est": 3.0,
+      "lo": 3.0,
+      "hi": 3.0
+     }
+    }
+   },
+   "latency": {
+    "game_s": {
+     "n": 10,
+     "n_games": 10,
+     "mean": {
+      "est": 192.512253,
+      "lo": 156.04942,
+      "hi": 229.92313
+     },
+     "p50": {
+      "est": 179.295149,
+      "lo": 134.254877,
+      "hi": 229.617527
+     },
+     "p95": {
+      "est": 296.330362,
+      "lo": 204.169367,
+      "hi": 312.307297
+     }
+    },
+    "call_ms": {
+     "n": 620,
+     "n_games": 10,
+     "mean": {
+      "est": 4405.932258,
+      "lo": 4087.131493,
+      "hi": 4735.070816
+     },
+     "p50": {
+      "est": 4003.0,
+      "lo": 3730.0,
+      "hi": 4337.05
+     },
+     "p95": {
+      "est": 7721.75,
+      "lo": 6953.0,
+      "hi": 8370.0
+     }
+    }
+   }
+  },
+  "cheap": {
+   "games": 10,
+   "models": [
+    "claude-cli:haiku"
+   ],
+   "usd": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 0.087252,
+     "lo": 0.07869,
+     "hi": 0.095332
+    },
+    "p50": {
+     "est": 0.088891,
+     "lo": 0.078793,
+     "hi": 0.097189
+    },
+    "p95": {
+     "est": 0.107053,
+     "lo": 0.089234,
+     "hi": 0.10843
+    }
+   },
+   "cheap_eq_tokens": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 541054.3,
+     "lo": 491530.8625,
+     "hi": 588921.5625
+    },
+    "p50": {
+     "est": 543155.0,
+     "lo": 491041.5,
+     "hi": 599859.5
+    },
+    "p95": {
+     "est": 658294.6,
+     "lo": 549472.0,
+     "hi": 660577.0
+    }
+   },
+   "tokens_cli": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 541054.3,
+     "lo": 491530.8625,
+     "hi": 588921.5625
+    },
+    "p50": {
+     "est": 543155.0,
+     "lo": 491041.5,
+     "hi": 599859.5
+    },
+    "p95": {
+     "est": 658294.6,
+     "lo": 549472.0,
+     "hi": 660577.0
+    }
+   },
+   "tokens_by_model": {
+    "claude-cli:haiku": 5410543
+   },
+   "legal": {
+    "k": 591,
+    "n": 592,
+    "n_games": 10,
+    "p": 0.998311,
+    "wilson": [
+     0.990495,
+     0.999702
+    ],
+    "boot": [
+     0.994755,
+     1.0
+    ]
+   },
+   "clean": {
+    "k": 582,
+    "n": 592,
+    "n_games": 10,
+    "p": 0.983108,
+    "wilson": [
+     0.969188,
+     0.990799
+    ],
+    "boot": [
+     0.968944,
+     0.99651
+    ]
+   },
+   "fallback": {
+    "k": 0,
+    "n": 592,
+    "n_games": 10,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.006447
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "guard_block": {
+    "k": 1,
+    "n": 592,
+    "n_games": 10,
+    "p": 0.001689,
+    "wilson": [
+     0.000298,
+     0.009505
+    ],
+    "boot": [
+     0.0,
+     0.005245
+    ]
+   },
+   "step_success": {
+    "k": 635,
+    "n": 652,
+    "n_games": 10,
+    "p": 0.973926,
+    "wilson": [
+     0.958643,
+     0.983658
+    ],
+    "boot": [
+     0.946643,
+     0.995363
+    ]
+   },
+   "escalated": {
+    "k": 0,
+    "n": 592,
+    "n_games": 10,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.006447
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "strong_turns": {
+    "k": 0,
+    "n": 592,
+    "n_games": 10,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.006447
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "escalation_by_reason": {},
+   "say_do": {
+    "k": 7,
+    "n": 8,
+    "n_games": 5,
+    "p": 0.875,
+    "wilson": [
+     0.529112,
+     0.977583
+    ],
+    "boot": [
+     0.625,
+     1.0
+    ]
+   },
+   "hallucinated": {
+    "k": 2,
+    "n": 168,
+    "n_games": 10,
+    "p": 0.011905,
+    "wilson": [
+     0.003271,
+     0.042361
+    ],
+    "boot": [
+     0.0,
+     0.028576
+    ]
+   },
+   "outcome": {
+    "village_wins": 5,
+    "n": 10,
+    "village_win_rate": 0.5,
+    "wilson": [
+     0.236593,
+     0.763407
+    ],
+    "werewolf_win_rate": 0.5,
+    "werewolf_wilson": [
+     0.236593,
+     0.763407
+    ],
+    "rounds": {
+     "n": 10,
+     "n_games": 10,
+     "mean": {
+      "est": 3.1,
+      "lo": 2.7,
+      "hi": 3.5
+     },
+     "p50": {
+      "est": 3.0,
+      "lo": 2.5,
+      "hi": 4.0
+     },
+     "p95": {
+      "est": 4.0,
+      "lo": 3.0,
+      "hi": 4.0
+     }
+    }
+   },
+   "latency": {
+    "game_s": {
+     "n": 10,
+     "n_games": 10,
+     "mean": {
+      "est": 220.568501,
+      "lo": 189.496995,
+      "hi": 249.184443
+     },
+     "p50": {
+      "est": 238.072906,
+      "lo": 178.669142,
+      "hi": 251.46805
+     },
+     "p95": {
+      "est": 273.849222,
+      "lo": 247.625139,
+      "hi": 289.867064
+     }
+    },
+    "call_ms": {
+     "n": 652,
+     "n_games": 10,
+     "mean": {
+      "est": 5440.246933,
+      "lo": 5196.383525,
+      "hi": 5692.765107
+     },
+     "p50": {
+      "est": 5166.0,
+      "lo": 4998.0,
+      "hi": 5411.5
+     },
+     "p95": {
+      "est": 9365.7,
+      "lo": 8310.0,
+      "hi": 10377.4
+     }
+    }
+   }
+  },
+  "cascade": {
+   "games": 10,
+   "models": [
+    "claude-cli:haiku"
+   ],
+   "usd": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 0.377528,
+     "lo": 0.332626,
+     "hi": 0.426738
+    },
+    "p50": {
+     "est": 0.352683,
+     "lo": 0.335281,
+     "hi": 0.406169
+    },
+    "p95": {
+     "est": 0.50562,
+     "lo": 0.382254,
+     "hi": 0.566611
+    }
+   },
+   "cheap_eq_tokens": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 2470355.793765,
+     "lo": 2169378.782108,
+     "hi": 2791333.88315
+    },
+    "p50": {
+     "est": 2356413.035283,
+     "lo": 2163591.775918,
+     "hi": 2629016.742857
+    },
+    "p95": {
+     "est": 3346136.637853,
+     "lo": 2512124.091519,
+     "hi": 3710022.531664
+    }
+   },
+   "tokens_cli": {
+    "n": 10,
+    "n_games": 10,
+    "mean": {
+     "est": 495711.3,
+     "lo": 465322.72,
+     "hi": 530574.59
+    },
+    "p50": {
+     "est": 473230.0,
+     "lo": 466485.5,
+     "hi": 522088.5
+    },
+    "p95": {
+     "est": 590242.25,
+     "lo": 491838.0,
+     "hi": 621254.0
+    }
+   },
+   "tokens_by_model": {
+    "claude-cli:sonnet": 1300164,
+    "claude-cli:haiku": 3656949
+   },
+   "legal": {
+    "k": 543,
+    "n": 545,
+    "n_games": 10,
+    "p": 0.99633,
+    "wilson": [
+     0.98672,
+     0.998993
+    ],
+    "boot": [
+     0.991103,
+     1.0
+    ]
+   },
+   "clean": {
+    "k": 503,
+    "n": 545,
+    "n_games": 10,
+    "p": 0.922936,
+    "wilson": [
+     0.897468,
+     0.942483
+    ],
+    "boot": [
+     0.900749,
+     0.948768
+    ]
+   },
+   "fallback": {
+    "k": 2,
+    "n": 545,
+    "n_games": 10,
+    "p": 0.00367,
+    "wilson": [
+     0.001007,
+     0.01328
+    ],
+    "boot": [
+     0.0,
+     0.008897
+    ]
+   },
+   "guard_block": {
+    "k": 4,
+    "n": 545,
+    "n_games": 10,
+    "p": 0.007339,
+    "wilson": [
+     0.002858,
+     0.018718
+    ],
+    "boot": [
+     0.001764,
+     0.016075
+    ]
+   },
+   "step_success": {
+    "k": 580,
+    "n": 624,
+    "n_games": 10,
+    "p": 0.929487,
+    "wilson": [
+     0.906662,
+     0.947056
+    ],
+    "boot": [
+     0.911714,
+     0.951586
+    ]
+   },
+   "escalated": {
+    "k": 244,
+    "n": 545,
+    "n_games": 10,
+    "p": 0.447706,
+    "wilson": [
+     0.40647,
+     0.489675
+    ],
+    "boot": [
+     0.427184,
+     0.468533
+    ]
+   },
+   "strong_turns": {
+    "k": 244,
+    "n": 545,
+    "n_games": 10,
+    "p": 0.447706,
+    "wilson": [
+     0.40647,
+     0.489675
+    ],
+    "boot": [
+     0.427184,
+     0.468533
+    ]
+   },
+   "escalation_by_reason": {
+    "decisive": {
+     "k": 238,
+     "n": 545,
+     "n_games": 10,
+     "p": 0.436697,
+     "wilson": [
+      0.395644,
+      0.478637
+     ],
+     "boot": [
+      0.418112,
+      0.455173
+     ]
+    },
+    "schema": {
+     "k": 2,
+     "n": 545,
+     "n_games": 10,
+     "p": 0.00367,
+     "wilson": [
+      0.001007,
+      0.01328
+     ],
+     "boot": [
+      0.0,
+      0.008977
+     ]
+    },
+    "unsupported_citation": {
+     "k": 4,
+     "n": 545,
+     "n_games": 10,
+     "p": 0.007339,
+     "wilson": [
+      0.002858,
+      0.018718
+     ],
+     "boot": [
+      0.001764,
+      0.016075
+     ]
+    }
+   },
+   "say_do": {
+    "k": 12,
+    "n": 12,
+    "n_games": 8,
+    "p": 1.0,
+    "wilson": [
+     0.757506,
+     1.0
+    ],
+    "boot": [
+     1.0,
+     1.0
+    ]
+   },
+   "hallucinated": {
+    "k": 0,
+    "n": 147,
+    "n_games": 10,
+    "p": 0.0,
+    "wilson": [
+     0.0,
+     0.025467
+    ],
+    "boot": [
+     0.0,
+     0.0
+    ]
+   },
+   "outcome": {
+    "village_wins": 7,
+    "n": 10,
+    "village_win_rate": 0.7,
+    "wilson": [
+     0.396778,
+     0.892209
+    ],
+    "werewolf_win_rate": 0.3,
+    "werewolf_wilson": [
+     0.107791,
+     0.603222
+    ],
+    "rounds": {
+     "n": 10,
+     "n_games": 10,
+     "mean": {
+      "est": 2.5,
+      "lo": 2.1,
+      "hi": 2.9
+     },
+     "p50": {
+      "est": 2.0,
+      "lo": 2.0,
+      "hi": 3.0
+     },
+     "p95": {
+      "est": 3.55,
+      "lo": 2.55,
+      "hi": 4.0
+     }
+    }
+   },
+   "latency": {
+    "game_s": {
+     "n": 10,
+     "n_games": 10,
+     "mean": {
+      "est": 232.554664,
+      "lo": 202.672392,
+      "hi": 268.966929
+     },
+     "p50": {
+      "est": 235.848774,
+      "lo": 185.728839,
+      "hi": 255.556605
+     },
+     "p95": {
+      "est": 317.375205,
+      "lo": 241.876368,
+      "hi": 364.538378
+     }
+    },
+    "call_ms": {
+     "n": 624,
+     "n_games": 10,
+     "mean": {
+      "est": 5065.229167,
+      "lo": 4851.511946,
+      "hi": 5325.943901
+     },
+     "p50": {
+      "est": 4883.5,
+      "lo": 4600.9625,
+      "hi": 5208.0
+     },
+     "p95": {
+      "est": 8074.0,
+      "lo": 7699.97,
+      "hi": 9031.15
+     }
+    }
+   }
+  }
+ },
+ "paired": {
+  "cheap": {
+   "usd": {
+    "n": 10,
+    "diff": -1.024896,
+    "lo": -1.125203,
+    "hi": -0.929357
+   },
+   "cheap_eq_tokens": {
+    "n": 10,
+    "diff": -8583317.7,
+    "lo": -9240755.0575,
+    "hi": -7949161.2825
+   },
+   "tokens_cli": {
+    "n": 10,
+    "diff": 84835.7,
+    "lo": 13668.875,
+    "hi": 150796.0475
+   },
+   "legal": {
+    "n": 10,
+    "diff": 0.001667,
+    "lo": -0.003994,
+    "hi": 0.007327
+   },
+   "clean": {
+    "n": 10,
+    "diff": 0.039183,
+    "lo": 0.00719,
+    "hi": 0.071933
+   },
+   "fallback": {
+    "n": 10,
+    "diff": 0.0,
+    "lo": 0.0,
+    "hi": 0.0
+   },
+   "guard_block": {
+    "n": 10,
+    "diff": -0.014997,
+    "lo": -0.034852,
+    "hi": 0.00022
+   },
+   "say_do": {
+    "n": 5,
+    "diff": -0.06,
+    "lo": -0.3,
+    "hi": 0.12
+   },
+   "hallucinated": {
+    "n": 10,
+    "diff": -0.001587,
+    "lo": -0.026059,
+    "hi": 0.022557
+   },
+   "village_win": {
+    "n": 10,
+    "diff": -0.2,
+    "lo": -0.6,
+    "hi": 0.3
+   },
+   "duration_s": {
+    "n": 10,
+    "diff": 28.056248,
+    "lo": -34.734586,
+    "hi": 85.81711
+   },
+   "call_ms_p50": {
+    "n": 10,
+    "diff": 1155.7,
+    "lo": 757.5525,
+    "hi": 1536.95875
+   },
+   "cost_ratio_usd": {
+    "n": 10,
+    "ratio": 0.078454,
+    "lo": 0.066348,
+    "hi": 0.091084
+   },
+   "non_inferiority_legal": {
+    "verdict": "non_inferior",
+    "delta": 0.02
+   }
+  },
+  "cascade": {
+   "usd": {
+    "n": 10,
+    "diff": -0.73462,
+    "lo": -0.838914,
+    "hi": -0.620127
+   },
+   "cheap_eq_tokens": {
+    "n": 10,
+    "diff": -6654016.206235,
+    "lo": -7340150.716071,
+    "hi": -5897396.937983
+   },
+   "tokens_cli": {
+    "n": 10,
+    "diff": 39492.7,
+    "lo": -5408.1075,
+    "hi": 93804.8225
+   },
+   "legal": {
+    "n": 10,
+    "diff": -4.7e-05,
+    "lo": -0.005212,
+    "hi": 0.005366
+   },
+   "clean": {
+    "n": 10,
+    "diff": -0.021962,
+    "lo": -0.045902,
+    "hi": 0.002961
+   },
+   "fallback": {
+    "n": 10,
+    "diff": 0.0036,
+    "lo": 0.0,
+    "hi": 0.00884
+   },
+   "guard_block": {
+    "n": 10,
+    "diff": -0.009457,
+    "lo": -0.031889,
+    "hi": 0.007392
+   },
+   "say_do": {
+    "n": 7,
+    "diff": 0.028571,
+    "lo": 0.0,
+    "hi": 0.085714
+   },
+   "hallucinated": {
+    "n": 10,
+    "diff": -0.013025,
+    "lo": -0.031933,
+    "hi": 0.0
+   },
+   "village_win": {
+    "n": 10,
+    "diff": 0.0,
+    "lo": -0.3,
+    "hi": 0.3
+   },
+   "duration_s": {
+    "n": 10,
+    "diff": 40.042411,
+    "lo": -18.50419,
+    "hi": 93.596556
+   },
+   "call_ms_p50": {
+    "n": 10,
+    "diff": 838.25,
+    "lo": 346.1325,
+    "hi": 1312.28625
+   },
+   "cost_ratio_usd": {
+    "n": 10,
+    "ratio": 0.339459,
+    "lo": 0.295614,
+    "hi": 0.403069
+   },
+   "non_inferiority_legal": {
+    "verdict": "non_inferior",
+    "delta": 0.02
+   }
+  }
+ },
+ "ref": "strong",
+ "delta": 0.02,
+ "games": {
+  "strong": [
+   {
+    "seed": 2001,
+    "path": "runs/cascade/strong/g2001.json",
+    "model": "claude-cli:sonnet",
+    "winner": "village",
+    "turns": 60,
+    "tokens_cli": 533507,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      499164,
+      34343
+     ]
+    },
+    "usd": 1.341758,
+    "cheap_eq_tokens": 10670140.0,
+    "legal": 0.983333,
+    "fallback": 0.0,
+    "clean": 0.95,
+    "guard_block": 0.016667,
+    "step_blocked": 0.138889,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 4,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 206.789271,
+    "call_ms_p50": 3675.5,
+    "turn_wall_p95": 34.711
+   },
+   {
+    "seed": 2002,
+    "path": "runs/cascade/strong/g2002.json",
+    "model": "claude-cli:sonnet",
+    "winner": "village",
+    "turns": 61,
+    "tokens_cli": 494707,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      465511,
+      29196
+     ]
+    },
+    "usd": 1.222982,
+    "cheap_eq_tokens": 9894140.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.95082,
+    "guard_block": 0.0,
+    "step_blocked": 0.046154,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 0.833333,
+    "say_do_n": 6,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 276.802997,
+    "call_ms_p50": 4840.0,
+    "turn_wall_p95": 16.326
+   },
+   {
+    "seed": 2003,
+    "path": "runs/cascade/strong/g2003.json",
+    "model": "claude-cli:sonnet",
+    "winner": "werewolf",
+    "turns": 54,
+    "tokens_cli": 426966,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      405511,
+      21455
+     ]
+    },
+    "usd": 1.025572,
+    "cheap_eq_tokens": 8539320.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.962963,
+    "guard_block": 0.0,
+    "step_blocked": 0.035714,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 3,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 129.806608,
+    "call_ms_p50": 3633.0,
+    "turn_wall_p95": 9.02205
+   },
+   {
+    "seed": 2004,
+    "path": "runs/cascade/strong/g2004.json",
+    "model": "claude-cli:sonnet",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 482716,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      459766,
+      22950
+     ]
+    },
+    "usd": 1.149032,
+    "cheap_eq_tokens": 9654320.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.862745,
+    "guard_block": 0.098039,
+    "step_blocked": 0.185714,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 2,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 176.158241,
+    "call_ms_p50": 3584.0,
+    "turn_wall_p95": 22.894
+   },
+   {
+    "seed": 2005,
+    "path": "runs/cascade/strong/g2005.json",
+    "model": "claude-cli:sonnet",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 389056,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      372104,
+      16952
+     ]
+    },
+    "usd": 0.913728,
+    "cheap_eq_tokens": 7781120.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.960784,
+    "guard_block": 0.0,
+    "step_blocked": 0.037037,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 2,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 119.584946,
+    "call_ms_p50": 3591.0,
+    "turn_wall_p95": 8.234
+   },
+   {
+    "seed": 2006,
+    "path": "runs/cascade/strong/g2006.json",
+    "model": "claude-cli:sonnet",
+    "winner": "village",
+    "turns": 53,
+    "tokens_cli": 433718,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      410985,
+      22733
+     ]
+    },
+    "usd": 1.0493,
+    "cheap_eq_tokens": 8674360.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.943396,
+    "guard_block": 0.018868,
+    "step_blocked": 0.065574,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 5,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 165.031799,
+    "call_ms_p50": 3337.0,
+    "turn_wall_p95": 10.018
+   },
+   {
+    "seed": 2007,
+    "path": "runs/cascade/strong/g2007.json",
+    "model": "claude-cli:sonnet",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 387171,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      368114,
+      19057
+     ]
+    },
+    "usd": 0.926798,
+    "cheap_eq_tokens": 7743420.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 6,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 134.254877,
+    "call_ms_p50": 4011.0,
+    "turn_wall_p95": 7.3745
+   },
+   {
+    "seed": 2008,
+    "path": "runs/cascade/strong/g2008.json",
+    "model": "claude-cli:sonnet",
+    "winner": "village",
+    "turns": 61,
+    "tokens_cli": 526951,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      488827,
+      38124
+     ]
+    },
+    "usd": 1.358894,
+    "cheap_eq_tokens": 10539020.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.918033,
+    "guard_block": 0.016393,
+    "step_blocked": 0.097222,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 4,
+    "hallucinated": 0.058824,
+    "village_win": 1,
+    "duration_s": 312.307297,
+    "call_ms_p50": 3997.0,
+    "turn_wall_p95": 31.14
+   },
+   {
+    "seed": 2009,
+    "path": "runs/cascade/strong/g2009.json",
+    "model": "claude-cli:sonnet",
+    "winner": "werewolf",
+    "turns": 53,
+    "tokens_cli": 471549,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      444946,
+      26603
+     ]
+    },
+    "usd": 1.155922,
+    "cheap_eq_tokens": 9430980.0,
+    "legal": 0.981132,
+    "fallback": 0.0,
+    "clean": 0.924528,
+    "guard_block": 0.018868,
+    "step_blocked": 0.15625,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 0.8,
+    "say_do_n": 5,
+    "hallucinated": 0.071429,
+    "village_win": 0,
+    "duration_s": 221.954438,
+    "call_ms_p50": 4587.0,
+    "turn_wall_p95": 41.7096
+   },
+   {
+    "seed": 2010,
+    "path": "runs/cascade/strong/g2010.json",
+    "model": "claude-cli:sonnet",
+    "winner": "werewolf",
+    "turns": 53,
+    "tokens_cli": 415845,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      397619,
+      18226
+     ]
+    },
+    "usd": 0.977498,
+    "cheap_eq_tokens": 8316900.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.981132,
+    "guard_block": 0.0,
+    "step_blocked": 0.018182,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 182.432057,
+    "call_ms_p50": 4988.0,
+    "turn_wall_p95": 14.306
+   }
+  ],
+  "cheap": [
+   {
+    "seed": 2001,
+    "path": "runs/cascade/cheap/g2001.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 60,
+    "tokens_cli": 544214,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      460161,
+      84053
+     ]
+    },
+    "usd": 0.088043,
+    "cheap_eq_tokens": 544214.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.055556,
+    "village_win": 1,
+    "duration_s": 196.592168,
+    "call_ms_p50": 5144.0,
+    "turn_wall_p95": 11.06905
+   },
+   {
+    "seed": 2002,
+    "path": "runs/cascade/cheap/g2002.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 72,
+    "tokens_cli": 660577,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      562298,
+      98279
+     ]
+    },
+    "usd": 0.105369,
+    "cheap_eq_tokens": 660577.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.958333,
+    "guard_block": 0.0,
+    "step_blocked": 0.037975,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 242.954836,
+    "call_ms_p50": 5153.0,
+    "turn_wall_p95": 16.5776
+   },
+   {
+    "seed": 2003,
+    "path": "runs/cascade/cheap/g2003.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 59,
+    "tokens_cli": 539909,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      451801,
+      88108
+     ]
+    },
+    "usd": 0.089234,
+    "cheap_eq_tokens": 539909.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.058824,
+    "village_win": 1,
+    "duration_s": 254.27186,
+    "call_ms_p50": 5408.0,
+    "turn_wall_p95": 16.5968
+   },
+   {
+    "seed": 2004,
+    "path": "runs/cascade/cheap/g2004.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 60,
+    "tokens_cli": 536377,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      461715,
+      74662
+     ]
+    },
+    "usd": 0.083503,
+    "cheap_eq_tokens": 536377.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 203.226632,
+    "call_ms_p50": 4965.5,
+    "turn_wall_p95": 13.51605
+   },
+   {
+    "seed": 2005,
+    "path": "runs/cascade/cheap/g2005.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 53,
+    "tokens_cli": 542096,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      455685,
+      86411
+     ]
+    },
+    "usd": 0.088774,
+    "cheap_eq_tokens": 542096.0,
+    "legal": 0.981132,
+    "fallback": 0.0,
+    "clean": 0.962264,
+    "guard_block": 0.018868,
+    "step_blocked": 0.132353,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 0.5,
+    "say_do_n": 2,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 233.190975,
+    "call_ms_p50": 4892.5,
+    "turn_wall_p95": 20.0834
+   },
+   {
+    "seed": 2006,
+    "path": "runs/cascade/cheap/g2006.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 61,
+    "tokens_cli": 553774,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      469696,
+      84078
+     ]
+    },
+    "usd": 0.089009,
+    "cheap_eq_tokens": 553774.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 3,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 248.66424,
+    "call_ms_p50": 5346.0,
+    "turn_wall_p95": 15.178
+   },
+   {
+    "seed": 2007,
+    "path": "runs/cascade/cheap/g2007.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 69,
+    "tokens_cli": 655505,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      548305,
+      107200
+     ]
+    },
+    "usd": 0.10843,
+    "cheap_eq_tokens": 655505.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.942029,
+    "guard_block": 0.0,
+    "step_blocked": 0.051948,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 251.446295,
+    "call_ms_p50": 5895.0,
+    "turn_wall_p95": 16.519
+   },
+   {
+    "seed": 2008,
+    "path": "runs/cascade/cheap/g2008.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 46,
+    "tokens_cli": 384547,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      329736,
+      54811
+     ]
+    },
+    "usd": 0.060379,
+    "cheap_eq_tokens": 384547.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 131.359291,
+    "call_ms_p50": 4785.0,
+    "turn_wall_p95": 12.50075
+   },
+   {
+    "seed": 2009,
+    "path": "runs/cascade/cheap/g2009.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 442174,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      378858,
+      63316
+     ]
+    },
+    "usd": 0.069544,
+    "cheap_eq_tokens": 442174.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 154.111651,
+    "call_ms_p50": 4884.5,
+    "turn_wall_p95": 15.269
+   },
+   {
+    "seed": 2010,
+    "path": "runs/cascade/cheap/g2010.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 61,
+    "tokens_cli": 551370,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      463620,
+      87750
+     ]
+    },
+    "usd": 0.090237,
+    "cheap_eq_tokens": 551370.0,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.983607,
+    "guard_block": 0.0,
+    "step_blocked": 0.015385,
+    "escalated": 0.0,
+    "strong_turns": 0.0,
+    "strong_calls": null,
+    "reasons": {},
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 289.867064,
+    "call_ms_p50": 5327.0,
+    "turn_wall_p95": 16.845
+   }
+  ],
+  "cascade": [
+   {
+    "seed": 2001,
+    "path": "runs/cascade/cascade/g2001.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 468861,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      119865,
+      5753
+     ],
+     "claude-cli:haiku": [
+      289644,
+      53599
+     ]
+    },
+    "usd": 0.353024,
+    "cheap_eq_tokens": 2343570.775128,
+    "legal": 0.980392,
+    "fallback": 0.019608,
+    "clean": 0.882353,
+    "guard_block": 0.0,
+    "step_blocked": 0.1,
+    "escalated": 0.431373,
+    "strong_turns": 0.431373,
+    "strong_calls": 0.279279,
+    "reasons": {
+     "decisive": 21,
+     "schema": 1
+    },
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 241.876368,
+    "call_ms_p50": 4560.0,
+    "turn_wall_p95": 46.68
+   },
+   {
+    "seed": 2002,
+    "path": "runs/cascade/cascade/g2002.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 53,
+    "tokens_cli": 491838,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      105947,
+      6850
+     ],
+     "claude-cli:haiku": [
+      312929,
+      66112
+     ]
+    },
+    "usd": 0.344743,
+    "cheap_eq_tokens": 2163591.775918,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.981132,
+    "guard_block": 0.0,
+    "step_blocked": 0.016667,
+    "escalated": 0.433962,
+    "strong_turns": 0.433962,
+    "strong_calls": 0.238938,
+    "reasons": {
+     "decisive": 23
+    },
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 230.598933,
+    "call_ms_p50": 4434.5,
+    "turn_wall_p95": 39.2262
+   },
+   {
+    "seed": 2003,
+    "path": "runs/cascade/cascade/g2003.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 54,
+    "tokens_cli": 476380,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      110697,
+      4592
+     ],
+     "claude-cli:haiku": [
+      305100,
+      55991
+     ]
+    },
+    "usd": 0.325819,
+    "cheap_eq_tokens": 2159611.825182,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.925926,
+    "guard_block": 0.018519,
+    "step_blocked": 0.066667,
+    "escalated": 0.462963,
+    "strong_turns": 0.462963,
+    "strong_calls": 0.254386,
+    "reasons": {
+     "decisive": 24,
+     "unsupported_citation": 1
+    },
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 183.496474,
+    "call_ms_p50": 4425.5,
+    "turn_wall_p95": 43.016
+   },
+   {
+    "seed": 2004,
+    "path": "runs/cascade/cascade/g2004.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 468314,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      287532,
+      52026
+     ],
+     "claude-cli:sonnet": [
+      123748,
+      5008
+     ]
+    },
+    "usd": 0.352342,
+    "cheap_eq_tokens": 2369255.295438,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.901961,
+    "guard_block": 0.0,
+    "step_blocked": 0.081967,
+    "escalated": 0.411765,
+    "strong_turns": 0.411765,
+    "strong_calls": 0.276786,
+    "reasons": {
+     "decisive": 21
+    },
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 241.098614,
+    "call_ms_p50": 4261.0,
+    "turn_wall_p95": 75.8145
+   },
+   {
+    "seed": 2005,
+    "path": "runs/cascade/cascade/g2005.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 67,
+    "tokens_cli": 621254,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      363602,
+      67385
+     ],
+     "claude-cli:sonnet": [
+      175764,
+      14503
+     ]
+    },
+    "usd": 0.566611,
+    "cheap_eq_tokens": 3710022.531664,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.895522,
+    "guard_block": 0.014925,
+    "step_blocked": 0.089744,
+    "escalated": 0.507463,
+    "strong_turns": 0.507463,
+    "strong_calls": 0.303448,
+    "reasons": {
+     "decisive": 33,
+     "unsupported_citation": 1
+    },
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 255.556605,
+    "call_ms_p50": 4614.0,
+    "turn_wall_p95": 34.3524
+   },
+   {
+    "seed": 2006,
+    "path": "runs/cascade/cascade/g2006.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 49,
+    "tokens_cli": 470080,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      121594,
+      9305
+     ],
+     "claude-cli:haiku": [
+      282671,
+      56510
+     ]
+    },
+    "usd": 0.39276,
+    "cheap_eq_tokens": 2517640.764284,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.877551,
+    "guard_block": 0.040816,
+    "step_blocked": 0.1,
+    "escalated": 0.44898,
+    "strong_turns": 0.44898,
+    "strong_calls": 0.284404,
+    "reasons": {
+     "decisive": 20,
+     "unsupported_citation": 2
+    },
+    "say_do": null,
+    "say_do_n": 0,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 259.731327,
+    "call_ms_p50": 5532.0,
+    "turn_wall_p95": 62.7746
+   },
+   {
+    "seed": 2007,
+    "path": "runs/cascade/cascade/g2007.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 424301,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      285301,
+      54169
+     ],
+     "claude-cli:sonnet": [
+      80480,
+      4351
+     ]
+    },
+    "usd": 0.260085,
+    "cheap_eq_tokens": 1676144.297369,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 1.0,
+    "guard_block": 0.0,
+    "step_blocked": 0.0,
+    "escalated": 0.411765,
+    "strong_turns": 0.411765,
+    "strong_calls": 0.205882,
+    "reasons": {
+     "decisive": 21
+    },
+    "say_do": 1.0,
+    "say_do_n": 4,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 191.963044,
+    "call_ms_p50": 5243.0,
+    "turn_wall_p95": 14.445
+   },
+   {
+    "seed": 2008,
+    "path": "runs/cascade/cascade/g2008.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 57,
+    "tokens_cli": 520855,
+    "tokens_by_model": {
+     "claude-cli:haiku": [
+      311431,
+      55256
+     ],
+     "claude-cli:sonnet": [
+      146172,
+      7996
+     ]
+    },
+    "usd": 0.431075,
+    "cheap_eq_tokens": 2901387.212084,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.894737,
+    "guard_block": 0.0,
+    "step_blocked": 0.106061,
+    "escalated": 0.491228,
+    "strong_turns": 0.491228,
+    "strong_calls": 0.292683,
+    "reasons": {
+     "decisive": 27,
+     "schema": 1
+    },
+    "say_do": 1.0,
+    "say_do_n": 2,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 170.95806,
+    "call_ms_p50": 5753.0,
+    "turn_wall_p95": 21.08
+   },
+   {
+    "seed": 2009,
+    "path": "runs/cascade/cascade/g2009.json",
+    "model": "claude-cli:haiku",
+    "winner": "village",
+    "turns": 51,
+    "tokens_cli": 462891,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      109766,
+      6640
+     ],
+     "claude-cli:haiku": [
+      291295,
+      55190
+     ]
+    },
+    "usd": 0.342657,
+    "cheap_eq_tokens": 2233316.717729,
+    "legal": 1.0,
+    "fallback": 0.0,
+    "clean": 0.941176,
+    "guard_block": 0.0,
+    "step_blocked": 0.050847,
+    "escalated": 0.411765,
+    "strong_turns": 0.411765,
+    "strong_calls": 0.254545,
+    "reasons": {
+     "decisive": 21
+    },
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 1,
+    "duration_s": 185.728839,
+    "call_ms_p50": 5128.0,
+    "turn_wall_p95": 41.418
+   },
+   {
+    "seed": 2010,
+    "path": "runs/cascade/cascade/g2010.json",
+    "model": "claude-cli:haiku",
+    "winner": "werewolf",
+    "turns": 61,
+    "tokens_cli": 552339,
+    "tokens_by_model": {
+     "claude-cli:sonnet": [
+      134201,
+      6932
+     ],
+     "claude-cli:haiku": [
+      342889,
+      68317
+     ]
+    },
+    "usd": 0.406169,
+    "cheap_eq_tokens": 2629016.742857,
+    "legal": 0.983607,
+    "fallback": 0.016393,
+    "clean": 0.934426,
+    "guard_block": 0.0,
+    "step_blocked": 0.072464,
+    "escalated": 0.442623,
+    "strong_turns": 0.442623,
+    "strong_calls": 0.269231,
+    "reasons": {
+     "decisive": 27
+    },
+    "say_do": 1.0,
+    "say_do_n": 1,
+    "hallucinated": 0.0,
+    "village_win": 0,
+    "duration_s": 364.538378,
+    "call_ms_p50": 4675.0,
+    "turn_wall_p95": 13.846
+   }
+  ]
+ }
+}

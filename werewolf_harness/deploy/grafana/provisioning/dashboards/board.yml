@@ -1,0 +1,3 @@
+apiVersion: 1
+providers:
+  - {name: werewolf, folder: werewolf, type: file, options: {path: /var/lib/grafana/dashboards}}

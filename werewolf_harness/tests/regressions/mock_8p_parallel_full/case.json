@@ -1,0 +1,14 @@
+{
+ "name": "mock_8p_parallel_full",
+ "source": "a.json",
+ "upto": null,
+ "expect": [
+  "winner:werewolf",
+  "no_fallback"
+ ],
+ "allow_drift": false,
+ "note": "8 人局 parallel=8、笔记异步：并行座位交错、问早了丢弃重问，整局回放一致",
+ "calls": 128,
+ "steps": 44,
+ "created": "2026-10-14"
+}

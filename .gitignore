@@ -1,0 +1,5 @@
+dump.rdb
+games/
+.venv/
+_docs/
+werewolf_harness/.interview/

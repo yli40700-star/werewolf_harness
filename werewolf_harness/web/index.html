@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>狼人杀 Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Noto+Serif+SC:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<header>
+  <h1>狼人杀 Arena</h1>
+  <span class="lede" id="lede">大厅</span>
+  <span class="loadbadge" id="load-badge" hidden title="模型层负载"></span>
+  <span class="grow"></span>
+  <nav>
+    <a href="#/" id="nav-lobby">大厅</a>
+    <a href="#/" id="nav-table" hidden>这一桌</a>
+  </nav>
+</header>
+
+<!-- ─────────────────────────────────────────── lobby ── -->
+<main id="lobby" class="lobby">
+  <section class="col">
+    <div class="queuebar" id="queue-banner" hidden></div>
+    <div class="chips" id="filters"></div>
+    <div class="card list">
+      <div class="lrow head">
+        <span>桌号</span><span>模型 · 配置</span><span>进度</span><span>座位</span><span>健康</span><span></span>
+      </div>
+      <div id="games"></div>
+    </div>
+  </section>
+
+  <section class="col side">
+    <div class="card form">
+      <h2>开一桌</h2>
+
+      <label>牌型</label>
+      <div class="chips" id="f-variant"></div>
+
+      <label>AI 座位的模型</label>
+      <div class="mgroups" id="f-model"></div>
+      <p class="hint" id="model-hint"></p>
+
+      <label>防护层</label>
+      <div class="chips" id="f-guard"></div>
+      <p class="hint" id="guard-hint"></p>
+
+      <label>你坐哪个位置</label>
+      <div class="chips" id="f-seat"></div>
+
+      <label>每回合给你多久</label>
+      <div class="chips" id="f-clock"></div>
+
+      <label>视角</label>
+      <div class="chips" id="f-xray"></div>
+      <p class="hint" id="xray-hint"></p>
+
+      <div class="foot">
+        <p class="mono hint" id="estimate"></p>
+        <button id="create">开桌并坐下</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ─────────────────────────────────────────── table ── -->
+<main id="table" class="table" hidden>
+  <!-- where the game is: which day/night, which step of it, and who is on the clock -->
+  <section class="card phasebar" id="phasebar">
+    <div class="pb-when" id="pb-when">—</div>
+    <div class="pb-steps" id="pb-steps"></div>
+    <div class="pb-now" id="nowbar"></div>
+  </section>
+
+  <section class="felt-wrap">
+    <div class="felt-box"><div class="felt" id="felt">
+      <div class="centre">
+        <div class="c-label" id="c-label">等待开局</div>
+        <div class="c-seat" id="c-seat">—</div>
+        <div class="c-sub" id="c-sub"></div>
+        <div class="c-note mono" id="c-note"></div>
+      </div>
+    </div></div>
+    <p class="hint legend">圆圈下面一行是这名玩家<b>这一天</b>做了什么。点一个座位看他的全部公开记录。</p>
+    <div class="under">
+      <div class="card corner me" id="private"></div>
+      <div class="card corner picked" id="picked"></div>
+    </div>
+  </section>
+
+  <section class="col rail">
+    <div class="card turn" id="turn"></div>
+
+    <div class="card feed">
+      <div class="rowhead">
+        <span class="tabs mono"><span id="tab-flow" class="t on">进程</span><span id="tab-say" class="t">发言</span><span id="tab-vote" class="t">投票</span><span id="tab-all" class="t">原始记录</span><span id="tab-review" class="t" hidden>复盘</span></span>
+        <span class="grow"></span><span class="mono tiny" id="spoken"></span>
+      </div>
+      <div id="speeches"></div>
+    </div>
+
+    <div class="strip">
+      <div class="card tile"><div class="mono tiny lbl">兜底率</div><div class="mono big" id="h-forced">—</div></div>
+      <div class="card tile"><div class="mono tiny lbl">本局用量</div><div class="mono big" id="h-tokens">—</div></div>
+      <div class="card tile"><div class="mono tiny lbl">连接</div><div class="mono big" id="h-conn">—</div></div>
+    </div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

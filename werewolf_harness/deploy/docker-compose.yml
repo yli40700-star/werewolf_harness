@@ -1,0 +1,121 @@
+# One box, everything: two API nodes (active + hot standby), model workers,
+# Postgres, Redis, Caddy, Prometheus, Grafana (+ Jaeger with --profile tracing).
+#
+#   make up                  # = docker compose -f deploy/docker-compose.yml up -d --build --wait
+#   make smoke               # up + one mock game through Caddy + metrics/replay checks
+#   make down
+#
+# Configuration comes from ../.env (optional; copy .env.example). Everything here
+# has a local default, so a fresh checkout runs with mock / sim models and no keys.
+#
+# Two API nodes are for failover, not sharding: Caddy sends everything to api1
+# while /readyz is green; if api1 dies its games' leases expire and api2 adopts
+# them (docs/adr/0001). Sharding games across nodes needs game-aware routing at
+# the proxy -- see docs/adr/0004.
+#
+# claude-cli seats are NOT available in these containers: `claude -p` runs on the
+# host's own Claude login, which is not (and must not be) mounted in. Run the
+# API natively (`python -m werewolf_harness.cli serve`) for claude-cli seats;
+# containers play mock / sim / API-key models. See docs/deploy.md.
+name: werewolf
+
+x-app: &app
+  image: werewolf-harness:${TAG:-local}
+  build: {context: .., dockerfile: deploy/Dockerfile}
+  env_file: [{path: ../.env, required: false}]
+  environment: &appenv
+    DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/wh
+    REDIS_URL: redis://redis:6379/0
+    AGENT_EXECUTOR: streams
+    JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me}
+    # empty = tracing off; `--profile tracing` + OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318 turns it on
+    OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    migrate: {condition: service_completed_successfully}
+  restart: unless-stopped
+  stop_grace_period: 25s
+
+services:
+  # One-shot: the schema is at head before any node starts. The API's own
+  # upgrade-on-start then finds nothing to do, so two nodes never race on DDL.
+  migrate:
+    <<: *app
+    command: ["python", "-c", "import os; from werewolf_harness.app.storage.migrate import upgrade; upgrade(os.environ['DATABASE_URL'])"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+    healthcheck: {disable: true}
+
+  api1:
+    <<: *app
+    environment: {<<: *appenv, NODE_ID: node-1, OTEL_SERVICE_NAME: api-1}
+    ports: ["127.0.0.1:${API_PORT:-8402}:8402"]      # direct, bypassing Caddy (debugging)
+  api2:
+    <<: *app
+    environment: {<<: *appenv, NODE_ID: node-2, OTEL_SERVICE_NAME: api-2}
+  worker:
+    <<: *app
+    command: ["python", "-m", "werewolf_harness.app.llm.worker"]
+    environment: {<<: *appenv, OTEL_SERVICE_NAME: worker, WORKER_METRICS_PORT: "9100"}
+    deploy: {replicas: "${WORKERS:-2}"}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:9100/metrics', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      start_interval: 1s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    environment: {POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-postgres}", POSTGRES_DB: wh}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U postgres -d wh"], interval: 10s, timeout: 3s, retries: 3, start_period: 60s, start_interval: 1s}
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    # not published to the host; reachable only on the compose network (the official image also defaults to this)
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction", "--protected-mode", "no"]
+    volumes: [redisdata:/data]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 10s, timeout: 3s, retries: 3, start_period: 30s, start_interval: 1s}
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    # DOMAIN unset -> ":80", plain HTTP on any host name (local). A real domain -> automatic HTTPS.
+    ports: ["${HTTP_PORT:-8080}:80", "${HTTPS_PORT:-8443}:443"]
+    environment: {DOMAIN: "${DOMAIN:-:80}"}
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddydata:/data]
+    # the admin endpoint (localhost-only inside the container) answers once the Caddyfile is loaded
+    healthcheck: {test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:2019/config/"], interval: 10s, timeout: 3s, retries: 3, start_period: 30s, start_interval: 1s}
+    depends_on:
+      api1: {condition: service_healthy}
+      api2: {condition: service_healthy}
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes: [./prometheus.yml:/etc/prometheus/prometheus.yml:ro]
+    ports: ["127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"]
+    healthcheck: {test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:9090/-/ready"], interval: 10s, timeout: 3s, retries: 3, start_period: 30s, start_interval: 1s}
+    restart: unless-stopped
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment: {GF_AUTH_ANONYMOUS_ENABLED: "true", GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer}
+    volumes: [./grafana/provisioning:/etc/grafana/provisioning:ro, ./grafana/dashboards:/var/lib/grafana/dashboards:ro]
+    ports: ["127.0.0.1:${GRAFANA_PORT:-3000}:3000"]
+    depends_on:
+      prometheus: {condition: service_healthy}
+    healthcheck: {test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:3000/api/health"], interval: 10s, timeout: 3s, retries: 3, start_period: 60s, start_interval: 1s}
+    restart: unless-stopped
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    profiles: [tracing]
+    ports: ["127.0.0.1:16686:16686"]
+
+volumes:
+  pgdata:
+  redisdata:
+  caddydata:

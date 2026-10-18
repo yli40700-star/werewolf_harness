@@ -1,0 +1,13 @@
+# Automatic HTTPS for $DOMAIN. WebSocket upgrades pass through reverse_proxy as-is.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy api1:8402 api2:8402 {
+		# all traffic to the first healthy node; the second is a hot standby
+		lb_policy first
+		health_uri /readyz
+		health_interval 2s
+		health_timeout 1s
+		fail_duration 10s
+	}
+	header /static/* Cache-Control "public, max-age=300"
+}

@@ -1,0 +1,14 @@
+{
+ "name": "mock_12p_parallel_upto40",
+ "source": "b.json",
+ "upto": 40,
+ "expect": [
+  "max_forced:0",
+  "not_forced:39"
+ ],
+ "allow_drift": false,
+ "note": "12 人局只保留前 40 步：截断回放只带用到的调用",
+ "calls": 136,
+ "steps": 40,
+ "created": "2026-10-14"
+}

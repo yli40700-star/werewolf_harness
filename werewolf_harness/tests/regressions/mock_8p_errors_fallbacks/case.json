@@ -1,0 +1,11 @@
+{
+ "name": "mock_8p_errors_fallbacks",
+ "source": "c1.json",
+ "upto": null,
+ "expect": [],
+ "allow_drift": false,
+ "note": "sequential，30% 503 + 35% 胡言乱语：重试、强制终结、transport_failure 兜底、默认动作，全部按录像重放",
+ "calls": 157,
+ "steps": 29,
+ "created": "2026-10-14"
+}

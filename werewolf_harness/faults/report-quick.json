@@ -1,0 +1,370 @@
+{
+  "meta": {
+    "total_s": 87.3,
+    "quick": true,
+    "games_per_scenario": 1,
+    "own_postgres": true,
+    "own_redis": true,
+    "timing": {
+      "LEASE_TTL_MS": "3000",
+      "LEASE_RENEW_S": "0.5",
+      "RECOVERY_SCAN_S": "0.5",
+      "AGENT_TIMEOUT_S": "25",
+      "CLAIM_IDLE_MS": "3000"
+    },
+    "python": "3.12.13",
+    "platform": "macOS-15.3.1-arm64-arm-64bit",
+    "when": "2026-10-15 01:11",
+    "logs": "/var/folders/92/ds229y7x69j6928v_t5svrxm0000gn/T/wh-faults-mu6w5c8_"
+  },
+  "ok": true,
+  "results": [
+    {
+      "scenario": "worker_kill",
+      "title": "worker 回合中被 kill -9",
+      "games": [
+        "g79ca0611"
+      ],
+      "seconds": 20.4,
+      "invariants": {
+        "journal": {
+          "ok": true,
+          "detail": "27 行"
+        },
+        "fencing": {
+          "ok": true,
+          "detail": "1 次持有（token 合计）"
+        },
+        "no_recall": {
+          "ok": true,
+          "detail": "28 次回合首调用"
+        },
+        "drafts": {
+          "ok": true,
+          "detail": "2 个客户端看到 18 条草稿"
+        },
+        "terminal": {
+          "ok": true,
+          "detail": "1/1 打完"
+        },
+        "replay": {
+          "ok": true,
+          "detail": "终局一致"
+        },
+        "memory": {
+          "ok": true,
+          "detail": "27 行"
+        }
+      },
+      "notes": [
+        "kill -9 worker1（有草稿正在流式输出）",
+        "kill -9 worker2（有草稿正在流式输出）"
+      ],
+      "stats": {
+        "steps": 27,
+        "forced": 0,
+        "takeovers": 0,
+        "states": {
+          "g79ca0611": "over"
+        },
+        "watchers": [
+          {
+            "kind": "ws",
+            "ended": "end",
+            "connects": 1,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 9,
+              "committed": 9,
+              "retracted": 0,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          },
+          {
+            "kind": "sse",
+            "ended": "end",
+            "connects": 1,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 9,
+              "committed": 9,
+              "retracted": 0,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "node_kill",
+      "title": "owner 节点被 kill -9",
+      "games": [
+        "g1d3a791c"
+      ],
+      "seconds": 11.8,
+      "invariants": {
+        "journal": {
+          "ok": true,
+          "detail": "23 行"
+        },
+        "fencing": {
+          "ok": true,
+          "detail": "2 次持有（token 合计）"
+        },
+        "no_recall": {
+          "ok": true,
+          "detail": "27 次回合首调用"
+        },
+        "drafts": {
+          "ok": true,
+          "detail": "2 个客户端看到 28 条草稿"
+        },
+        "terminal": {
+          "ok": true,
+          "detail": "1/1 打完"
+        },
+        "replay": {
+          "ok": true,
+          "detail": "终局一致"
+        },
+        "memory": {
+          "ok": true,
+          "detail": "23 行"
+        }
+      },
+      "notes": [
+        "kill -9 api1（owner），其它节点等租约过期（3s）后接管",
+        "全部被接管，用时 3.1s"
+      ],
+      "stats": {
+        "steps": 23,
+        "forced": 0,
+        "takeovers": 1,
+        "states": {
+          "g1d3a791c": "over"
+        },
+        "watchers": [
+          {
+            "kind": "ws",
+            "ended": "end",
+            "connects": 2,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 14,
+              "committed": 12,
+              "retracted": 2,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          },
+          {
+            "kind": "sse",
+            "ended": "end",
+            "connects": 2,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 14,
+              "committed": 12,
+              "retracted": 2,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "model_faults",
+      "title": "模型报错 / 超时 / 变慢窗口",
+      "games": [
+        "g3be6517b"
+      ],
+      "seconds": 18.7,
+      "invariants": {
+        "journal": {
+          "ok": true,
+          "detail": "28 行"
+        },
+        "fencing": {
+          "ok": true,
+          "detail": "1 次持有（token 合计）"
+        },
+        "no_recall": {
+          "ok": true,
+          "detail": "28 次回合首调用"
+        },
+        "drafts": {
+          "ok": true,
+          "detail": "2 个客户端看到 26 条草稿"
+        },
+        "terminal": {
+          "ok": true,
+          "detail": "1/1 打完"
+        },
+        "replay": {
+          "ok": true,
+          "detail": "终局一致"
+        },
+        "memory": {
+          "ok": true,
+          "detail": "28 行"
+        }
+      },
+      "notes": [
+        "50% 调用报 503 × 2s",
+        "50% 调用 1s 后超时 × 2s",
+        "100% 报错 × 1.5s",
+        "每次调用慢 2.5s × 2.5s"
+      ],
+      "stats": {
+        "steps": 28,
+        "forced": 0,
+        "takeovers": 0,
+        "states": {
+          "g3be6517b": "over"
+        },
+        "watchers": [
+          {
+            "kind": "ws",
+            "ended": "end",
+            "connects": 1,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 13,
+              "committed": 13,
+              "retracted": 0,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          },
+          {
+            "kind": "sse",
+            "ended": "end",
+            "connects": 1,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 13,
+              "committed": 13,
+              "retracted": 0,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "scenario": "dup_zombie",
+      "title": "任务重复投递 + 被 fence 的旧 owner 醒来",
+      "games": [
+        "g9ccaa833"
+      ],
+      "seconds": 24.9,
+      "invariants": {
+        "journal": {
+          "ok": true,
+          "detail": "43 行"
+        },
+        "fencing": {
+          "ok": true,
+          "detail": "2 次持有（token 合计）"
+        },
+        "no_recall": {
+          "ok": true,
+          "detail": "51 次回合首调用"
+        },
+        "drafts": {
+          "ok": true,
+          "detail": "2 个客户端看到 30 条草稿"
+        },
+        "terminal": {
+          "ok": true,
+          "detail": "1/1 打完"
+        },
+        "replay": {
+          "ok": true,
+          "detail": "终局一致"
+        },
+        "memory": {
+          "ok": true,
+          "detail": "43 行"
+        }
+      },
+      "notes": [
+        "重复投递 24 个模型任务",
+        "SIGSTOP api1（owner），超过租约 3s",
+        "其它节点已接管，SIGCONT api1：它手里的答案只能被 fencing 拒绝"
+      ],
+      "stats": {
+        "steps": 43,
+        "forced": 0,
+        "takeovers": 1,
+        "states": {
+          "g9ccaa833": "over"
+        },
+        "watchers": [
+          {
+            "kind": "ws",
+            "ended": "end",
+            "connects": 2,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 15,
+              "committed": 11,
+              "retracted": 4,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          },
+          {
+            "kind": "sse",
+            "ended": "end",
+            "connects": 2,
+            "gaps": 0,
+            "trail": [],
+            "drafts": {
+              "shown": 15,
+              "committed": 11,
+              "retracted": 4,
+              "open": 0
+            },
+            "seen_tasks": [
+              "review",
+              "speak"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

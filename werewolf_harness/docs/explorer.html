@@ -1,0 +1,1557 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body>
+<title>Arena 调用栈探索器</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#F3F5F7; --surface:#FFFFFF; --ink:#1E242B; --muted:#6A7482; --line:#D8DEE5; --line-soft:#E8ECF0;
+  --accent:#0E7C74; --accent-soft:#DFF0EC; --accent-ink:#0A5F59;
+  --code-bg:#FAFBFC; --kw:#3C4A5E; --str:#7A5A2E; --cm:#8A93A0; --fn:#0E7C74;
+  --chg:#8A5A12; --chg-bg:#FBF1DE; --dim:.38;
+  --sel:#E4EBF6;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#13171B; --surface:#1A1F25; --ink:#E4E8EC; --muted:#98A2AE; --line:#2B333C; --line-soft:#232A32;
+  --accent:#5CC8BC; --accent-soft:#16302D; --accent-ink:#8FE0D4;
+  --code-bg:#161B21; --kw:#C6D0DC; --str:#D9B37A; --cm:#737E8B; --fn:#5CC8BC;
+  --chg:#E0B86A; --chg-bg:#2A2416; --dim:.35; --sel:#222B38;
+}}
+:root[data-theme="dark"]{
+  --bg:#13171B; --surface:#1A1F25; --ink:#E4E8EC; --muted:#98A2AE; --line:#2B333C; --line-soft:#232A32;
+  --accent:#5CC8BC; --accent-soft:#16302D; --accent-ink:#8FE0D4;
+  --code-bg:#161B21; --kw:#C6D0DC; --str:#D9B37A; --cm:#737E8B; --fn:#5CC8BC;
+  --chg:#E0B86A; --chg-bg:#2A2416; --dim:.35; --sel:#222B38;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Archivo,'PingFang SC','Hiragino Sans GB',sans-serif;font-size:13.5px;line-height:1.5;height:100vh;display:flex;flex-direction:column}
+header{padding:10px 18px;border-bottom:1px solid var(--line);background:var(--surface);display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+header h1{font-size:15px;margin:0;font-weight:700}
+header .hint{color:var(--muted);font-size:12.5px}
+.app{display:grid;grid-template-columns:200px minmax(0,1fr) 300px;flex:1;min-height:0}
+.pane{min-height:0;overflow:auto}
+.rounds{border-right:1px solid var(--line);background:var(--surface)}
+.rounds .r{padding:7px 12px;border-bottom:1px solid var(--line-soft);cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:11.5px;display:flex;gap:8px;align-items:baseline}
+.rounds .r:hover{background:var(--sel)}
+.rounds .r.on{background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.rounds .r .n{color:var(--muted);min-width:26px}
+.rounds .r.mark{box-shadow:inset 3px 0 0 var(--chg)}
+.rounds .r:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.code{padding:14px 18px 60px}
+.state{border-left:1px solid var(--line);background:var(--surface);padding:12px 14px}
+.state h2{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 8px;font-weight:600}
+table.vars{border-collapse:collapse;width:100%;font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+table.vars td{padding:3px 6px 3px 0;vertical-align:top;border-bottom:1px solid var(--line-soft);line-height:1.45;word-break:break-all}
+table.vars td.vn{color:var(--muted);white-space:nowrap;width:1%}
+table.vars tr.chg td{color:var(--chg);font-weight:600}
+table.vars tr.chg td.vn::after{content:" ←"}
+table.vars .was{color:var(--muted);font-weight:400;text-decoration:line-through;margin-right:6px}
+
+/* function block */
+.fn{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace;font-size:12.5px;line-height:1.7;background:var(--code-bg);border:1px solid var(--line-soft);border-radius:4px;margin:6px 0 10px}
+.fn>.hd{padding:6px 12px;border-bottom:1px solid var(--line-soft);color:var(--muted);font-size:11px;letter-spacing:.06em;display:flex;gap:10px;align-items:baseline}
+.fn>.hd b{color:var(--accent-ink);font-weight:600;letter-spacing:0;font-size:12px}
+.ln{display:grid;grid-template-columns:18px minmax(0,1fr) minmax(0,auto);gap:8px;padding:0 12px;align-items:baseline}
+.ln.dim{opacity:var(--dim)}
+.ln .tg{color:var(--accent);cursor:pointer;user-select:none;width:18px;text-align:center}
+.ln .tg:empty{cursor:default}
+.ln.callable{cursor:pointer}
+.ln.callable:hover{background:var(--sel)}
+.ln .c{white-space:pre;overflow-x:auto}
+.ln .note{color:var(--cm);font-style:italic;white-space:pre-wrap;font-size:11.5px;text-align:right;max-width:46ch}
+.ln .note.val{color:var(--accent-ink);font-style:normal}
+.k{color:var(--kw);font-weight:600}.s{color:var(--str)}.f{color:var(--fn);font-weight:600}.cm{color:var(--cm)}
+.nest{margin:2px 0 6px 30px;border-left:2px solid var(--accent-soft);padding-left:10px}
+.delta{margin:4px 12px 8px 30px;padding:6px 10px;background:var(--chg-bg);border-radius:3px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--chg)}
+.delta .lab{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;opacity:.8}
+.delta div{line-height:1.5}
+.delta .was{opacity:.6;text-decoration:line-through;margin-right:6px}
+.crumb{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);margin:0 0 10px}
+.crumb b{color:var(--ink)}
+.rt{margin:6px 0 4px;color:var(--muted);font-size:12.5px}
+.rt code{font-family:'IBM Plex Mono',monospace;background:var(--accent-soft);color:var(--accent-ink);padding:1px 6px;border-radius:3px}
+@media(max-width:900px){.app{grid-template-columns:1fr}.rounds{display:flex;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}.rounds .r{border-bottom:0;border-right:1px solid var(--line-soft);white-space:nowrap}.state{border-left:0;border-top:1px solid var(--line)}}
+
+/* ── 论文栏 ── */
+.tabs{display:flex;gap:2px;margin-top:10px}
+.tabs button{font:500 12.5px/1 inherit;padding:8px 14px;border:1px solid var(--line);
+  border-bottom:0;background:transparent;color:var(--muted);cursor:pointer;border-radius:3px 3px 0 0}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);
+  border-color:var(--line);box-shadow:0 1px 0 var(--surface)}
+.tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.paper{display:none;background:var(--surface);border:1px solid var(--line);
+  padding:38px clamp(20px,5vw,64px) 60px}
+.paper.on{display:block}
+.app.off{display:none}
+/* 正文守着 70 字宽，图挣脱出去用整幅——图被压到正文宽度时字会小到看不清 */
+.paper .inner{max-width:none;display:grid;
+  grid-template-columns:minmax(0,1fr) min(70ch,100%) minmax(0,1fr)}
+.paper .inner > *{grid-column:2}
+.paper .inner > figure{grid-column:1/-1;justify-self:center;width:min(1000px,100%)}
+.paper .kicker{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.paper h2{font-size:26px;line-height:1.3;font-weight:700;margin:.3em 0 .1em;letter-spacing:-.01em}
+.paper .sub{color:var(--muted);font-size:14px;margin:0 0 30px}
+.paper h3{font-size:16px;font-weight:700;margin:38px 0 10px;padding-top:16px;
+  border-top:1px solid var(--line-soft)}
+.paper h3 .no{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--accent);
+  margin-right:9px;font-weight:600}
+
+.paper h5{font-size:13px;font-weight:600;margin:20px 0 6px;color:var(--ink)}
+.paper h4{font-size:14px;font-weight:600;margin:22px 0 6px}
+.paper p{margin:0 0 13px;font-size:14.5px;line-height:1.8}
+.paper li{font-size:14.5px;line-height:1.8;margin-bottom:5px}
+.paper ul,.paper ol{margin:0 0 14px;padding-left:22px}
+.paper code{font-family:'IBM Plex Mono',monospace;font-size:.9em;background:var(--code-bg);
+  border:1px solid var(--line-soft);padding:1px 5px;border-radius:3px}
+.paper blockquote{margin:16px 0;padding:11px 16px;background:var(--code-bg);
+  border-left:3px solid var(--accent);font-size:14px;color:var(--ink)}
+.paper blockquote .who{display:block;margin-top:6px;font-size:12px;color:var(--muted)}
+.paper .axiom{margin:22px 0;padding:18px 20px;background:var(--accent-soft);
+  border:1px solid var(--accent);border-radius:3px}
+.paper .axiom b{color:var(--accent-ink)}
+.paper .lemma{margin:18px 0;padding-left:16px;border-left:2px solid var(--line)}
+.paper .lemma .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--accent);display:block;margin-bottom:3px}
+.paper table{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:13.5px}
+.paper th{text-align:left;font-weight:600;padding:8px 10px;border-bottom:1px solid var(--line);
+  color:var(--muted);font-size:12px;letter-spacing:.04em}
+.paper td{padding:9px 10px;border-bottom:1px solid var(--line-soft);vertical-align:top}
+.paper .retract{border:1px solid var(--chg);background:var(--chg-bg);padding:16px 18px;
+  margin:18px 0;border-radius:3px}
+.paper .retract .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--chg);display:block;margin-bottom:5px}
+
+
+.paper figure{margin:26px 0 30px}
+.paper figure svg{max-width:100%;height:auto;display:block;margin:0 auto}
+.paper figcaption{max-width:70ch;margin-left:auto;margin-right:auto;font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.65;
+  padding-left:12px;border-left:2px solid var(--line)}
+.paper .fig-box{fill:none;stroke:currentColor;stroke-width:1}
+.paper .fig-t{fill:currentColor;font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+.paper .fig-t.s{font-size:10.5px;opacity:.72}
+.paper .fig-t.h{font-family:inherit;font-size:12.5px;font-weight:600}
+.paper .fig-ln{stroke:currentColor;stroke-width:1;fill:none}
+.paper .fig-ln.thin{opacity:.4}
+.paper .fig-hi{stroke:var(--accent);fill:none;stroke-width:1.5}
+.paper .fig-hit{fill:var(--accent);font-family:'IBM Plex Mono',monospace;font-size:11.5px}
+.paper .fig-dim{opacity:.45}
+
+
+.paper .tree{font-family:'IBM Plex Mono',monospace;font-size:12px;line-height:1.75;
+  background:var(--code-bg);border:1px solid var(--line-soft);padding:14px 16px;margin:16px 0;
+  overflow-x:auto;white-space:pre}
+.paper .tree b{color:var(--accent);font-weight:500}
+.paper .tree i{font-style:normal;opacity:.62}
+.paper .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;margin:16px 0}
+.paper .two > div{background:var(--code-bg);border:1px solid var(--line-soft);padding:12px 14px}
+.paper .two h5{margin:0 0 7px;font-size:12px;font-weight:600;color:var(--muted)}
+.paper .two pre{background:transparent;border:0;padding:0;font-size:11.5px;margin:0}
+
+
+.paper .vs{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0;margin:18px 0;
+  border:1px solid var(--line)}
+.paper .vs > div{padding:14px 16px}
+.paper .vs > div + div{border-left:1px solid var(--line)}
+.paper .vs h5{margin:0 0 8px;font-size:12.5px;font-weight:600}
+.paper .vs .flow{font-family:'IBM Plex Mono',monospace;font-size:11.5px;line-height:1.8;
+  color:var(--muted);margin:0 0 8px;white-space:pre-wrap}
+.paper .vs p{margin:0;font-size:13.5px;line-height:1.7}
+.paper .vs.acc > div:last-child{background:var(--accent-soft)}
+@media(max-width:640px){.paper .vs > div + div{border-left:0;border-top:1px solid var(--line)}}
+
+
+
+
+/* ── 存档对照栏 ── */
+.demo{display:none;background:var(--surface);border:1px solid var(--line);padding:20px clamp(16px,3vw,32px) 40px}
+.demo.on{display:block}
+.demo .top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.demo h2{font-size:17px;margin:0;font-weight:700}
+.demo .sub{color:var(--muted);font-size:12.5px;margin:0 0 14px;max-width:80ch;line-height:1.7}
+.demo .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 16px}
+.demo .bar button{font:500 12px/1 inherit;padding:7px 12px;border:1px solid var(--line);
+  background:transparent;color:var(--ink);cursor:pointer;border-radius:3px}
+.demo .bar button:hover{border-color:var(--accent);color:var(--accent-ink)}
+.demo .bar button:disabled{opacity:.35;cursor:default}
+.demo .bar input[type=range]{flex:1;min-width:180px;accent-color:var(--accent)}
+.demo .bar .now{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);min-width:150px}
+.demo .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;align-items:start}
+.demo .card{border:1px solid var(--line);background:var(--code-bg);min-width:0}
+.demo .card > h3{margin:0;padding:9px 13px;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--line-soft);font-weight:600;display:flex;
+  justify-content:space-between;gap:10px}
+.demo .card > h3 em{font-style:normal;font-family:'IBM Plex Mono',monospace;letter-spacing:0;
+  text-transform:none;color:var(--ink)}
+.demo .body{padding:10px 13px;max-height:420px;overflow:auto}
+.demo .f{display:grid;grid-template-columns:150px 52px minmax(0,1fr);gap:8px;font-family:'IBM Plex Mono',monospace;
+  font-size:11px;line-height:1.6;padding:2px 0;border-bottom:1px solid var(--line-soft)}
+.demo .f .fn{color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.demo .f .fb{color:var(--muted);text-align:right}
+.demo .f .fv{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.55}
+.demo .f.chg{background:var(--accent-soft)}
+.demo .f.chg .fn{color:var(--accent-ink);font-weight:600}
+.demo .f.chg .fv{opacity:1;color:var(--accent-ink)}
+.demo .rest{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding-top:6px}
+.demo .jl{font-family:'IBM Plex Mono',monospace;font-size:11px;line-height:1.65;padding:3px 0;
+  border-bottom:1px solid var(--line-soft);color:var(--muted);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis}
+.demo .jl.new{color:var(--accent-ink);background:var(--accent-soft);font-weight:600}
+.demo .tot{display:flex;gap:26px;flex-wrap:wrap;margin-top:16px;padding-top:12px;
+  border-top:1px solid var(--line);font-variant-numeric:tabular-nums}
+.demo .tot div{display:flex;flex-direction:column}
+.demo .tot .n{font-family:'IBM Plex Mono',monospace;font-size:19px;font-weight:600}
+.demo .tot .k{font-size:11.5px;color:var(--muted)}
+.demo .tot .a .n{color:var(--muted)} .demo .tot .b .n{color:var(--accent)}
+.demo .meter{margin-top:12px}
+.demo .meter .row{display:grid;grid-template-columns:52px minmax(0,1fr) 92px;gap:10px;align-items:center;
+  margin-bottom:5px;font-size:11.5px;color:var(--muted)}
+.demo .meter .track{height:14px;border:1px solid var(--line)}
+.demo .meter .fill{height:100%;background:var(--muted);opacity:.45}
+.demo .meter .fill.acc{background:var(--accent);opacity:1}
+
+
+/* 调用栈 */
+.paper .stack{grid-column:1/-1;justify-self:center;width:min(1000px,100%);margin:14px 0 18px;
+  background:var(--code-bg);border:1px solid var(--line-soft);border-radius:3px;overflow-x:auto}
+.paper .stack pre{margin:0;padding:16px 18px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--ink)}
+.paper .stack b{color:var(--fn);font-weight:600}
+.paper .stack i{color:var(--muted);font-style:normal}
+.paper .stack u{text-decoration:none;color:var(--accent);font-weight:600}
+.paper .stack mark{background:var(--chg-bg);color:var(--chg);padding:0 3px;border-radius:2px}
+.paper .stack .tag{color:var(--accent-ink);background:var(--accent-soft);padding:0 6px;border-radius:2px;font-weight:600}
+
+/* 纠错 tab 类型说明 */
+.tg-group{margin:0 0 12px}
+.tg-g{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin:0 0 4px;font-weight:600}
+.tg-item{border-left:2px solid var(--line-soft);padding:2px 0 4px 8px;margin:0 0 6px}
+.tg-t{display:flex;gap:8px;align-items:baseline;font-size:12px}
+.tg-t b{font-family:'IBM Plex Mono',monospace;color:var(--accent-ink);font-weight:600}
+.tg-t span{color:var(--muted)}
+.tg-f{margin-top:2px}
+.tg-f div{display:flex;gap:8px;align-items:baseline;font-size:11.5px;line-height:1.5}
+.tg-f code{font-family:'IBM Plex Mono',monospace;color:var(--ink);white-space:nowrap}
+.tg-f span{color:var(--muted)}
+
+.ty{color:var(--accent-ink);border-bottom:1px dotted var(--accent);cursor:pointer}
+.ty:hover{background:var(--accent-soft)}
+.tg-item.flash{animation:tgflash 1.6s ease-out}
+@keyframes tgflash{0%{background:var(--accent-soft);border-left-color:var(--accent)}100%{background:transparent;border-left-color:var(--line-soft)}}
+</style>
+
+<header>
+  <h1>Arena 调用栈探索器</h1>
+  <span class="hint" id="hint">左边选一圈 → 中间从 <b>run()</b> 开始,点带 ▸ 的行展开被调函数,一层层剥;每个改状态的函数下面直接列出它改了什么 → 右边是这一圈前后的完整状态。</span>
+  <div class="tabs" role="tablist">
+    <button id="tab-run" role="tab" aria-selected="true">调用栈</button>
+    <button id="tab-paper" role="tab" aria-selected="false">设计札记</button>
+    <button id="tab-demo" role="tab" aria-selected="false">存档对照</button>
+    <button id="tab-fix" role="tab" aria-selected="false">纠错</button>
+    <button id="tab-idem" role="tab" aria-selected="false">幂等</button>
+  </div>
+</header>
+<div class="app">
+  <nav class="rounds pane" id="rounds"></nav>
+  <main class="code pane" id="code"></main>
+  <aside class="state pane" id="state"></aside>
+</div>
+
+<section class="paper" id="paper" role="tabpanel">
+<div class="inner">
+<div class="kicker">设计札记 · Werewolf Arena</div>
+<h2>一个多智能体对抗环境该由什么来保证正确</h2>
+<p class="sub">本文记录的是若干设计决定的依据，以及其中两项后来被推翻的论断。它不是使用说明。</p>
+
+<h3><span class="no">§1</span>问题的定位：认知分发，而非流程编排</h3>
+<p>做多智能体系统时，第一反应是找个编排框架：把流程画成图，节点是智能体，边是流转条件。这套做法在协作型任务里够用——大家目标一致，信息共享，谁先谁后主要是效率问题。</p>
+<p>对抗型任务不一样。狼人杀里有一件事是协作型任务里不存在的：<b>不同的参与者对"世界现在是什么样"必须有不同的、且受控的认知</b>。狼知道同伴是谁，预言家知道验过谁，村民什么都不知道，而这三份认知必须来自同一个世界。</p>
+<p>于是问题从"怎么编排"变成了"<b>世界是什么样，这件事能有几个说法</b>"。一个典型实现里，它至少有四个说法：引擎里的状态字段是一份，拼提示词时手写的那段描述是一份，校验模型输出时的那段判断是一份，跑完之后统计脚本重新解析日志又是一份。四份各自演化，谁也不保证一致。</p>
+<p>能观察到的症状是这样的：提示词告诉模型"你可以救人"，模型照做，执行层拒绝，因为解药已经用掉了——两处各写了一遍规则，改了一处忘了另一处。或者更糟：某一局狼人精准地投出了预言家，没人能说清是推理还是泄露，因为"狼能看到什么"这件事没有唯一的定义点。</p>
+
+<h3><span class="no">§2</span>控制流索引在路径上，还是索引在状态上</h3>
+<p>在动手之前先确认过这个轮子该不该造。图编排类框架（LangGraph 一类）把控制流表达成图，对抗环境类项目（TextArena 一类）提供的是环境集合、目标是给模型排名。前者的问题不在于表达能力，而在于<b>分支挂在什么上面</b>；后者的问题是把环境当作固定资产，新增环境、替换规则参数、把真人塞进某个座位都要改它的内部。</p>
+<p>先说前者，因为那才是结构性的分歧。</p>
+
+<h4>分支的索引方式决定规则的复制次数</h4>
+<p>自动机理论里这组区分早有名字：<b>Mealy 机</b>的输出取决于（当前状态，这条转移），<b>Moore 机</b>的输出只取决于当前状态。图编排的条件边天然是 Mealy 的——路由函数的名字里就带着"从哪个节点来"（<code>route_after_night</code>、<code>route_after_vote</code>）。</p>
+<p>这个区分在对抗游戏里立刻变成可数的代价。这套规则里能致死的路径有六条：夜刀、女巫毒、同守同救抵消、白天票出、狼自爆、猎人开枪。而死亡的后果有三条：猎人要开枪、警长要传警徽、够条件的人要留遗言。</p>
+<p>Mealy 式的写法里，每一个可能死人的节点后面都要挂一条条件边，而每条边都得把三个后果问一遍。六个来源乘三条后果，是<b>十八处判断</b>；再加第四条后果，要在六个路由函数里各补一遍。更麻烦的是这十八处之间没有任何机制保证一致：把"被女巫毒死的猎人不能开枪"这条改动漏在其中一处，程序不报错，只会打出一局"夜里毒死能开枪、白天票出不能开枪"的怪棋。</p>
+<p>Moore 式的写法把分支挪到状态上。六条致死路径全部经过同一个函数 <code>_kill(seat, cause)</code>，它记录死亡，然后由 <code>_queue_deaths</code> 判断三条后果——<b>写一遍</b>。调度函数 <code>_next()</code> 不知道刚才发生了什么，也不需要知道，它只读当前状态：狼死光了吗、有待处理的插入回合吗、现在是什么阶段。夜里被毒死的猎人和白天被票出的猎人走到这里时是同一个状态（<code>_pending_hunter</code> 有值），因此只需要一次判断。六加三，是<b>九处</b>；加第四条后果，改一处。</p>
+<p>乘积塌成求和的原因是<b>所有路径在写状态的那一刻汇合了</b>。图编排里没有这个汇合点——状态虽是共享字典，控制流却不共享，所以判断必须在每条出边上重来一遍。</p>
+
+<figure>
+<svg viewBox="0 0 940 620" role="img" aria-label="上半：图编排里三个结算点各自重复同一段死亡后果判断，九条边指向三个目标节点；下半：本设计里六条致死路径汇入一个 _kill 漏斗，后果只判断一次，写进三个待办字段，由 _next 读取。">
+<defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+<path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+<marker id="ara" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+<path d="M0 0 L8 4 L0 8 z" fill="var(--accent)"/></marker></defs>
+
+<text class="fig-t h" x="40" y="20">图编排：判断挂在边上</text>
+<rect class="fig-box" x="40" y="36" width="200" height="34" rx="2"/>
+<text class="fig-t" x="140" y="58" text-anchor="middle">夜间结算</text>
+<rect class="fig-box" x="340" y="36" width="200" height="34" rx="2"/>
+<text class="fig-t" x="440" y="58" text-anchor="middle">投票结算</text>
+<rect class="fig-box" x="640" y="36" width="200" height="34" rx="2"/>
+<text class="fig-t" x="740" y="58" text-anchor="middle">开枪结算</text>
+
+<line class="fig-ln" x1="140" y1="70" x2="140" y2="120" marker-end="url(#ar)"/>
+<line class="fig-ln" x1="440" y1="70" x2="440" y2="120" marker-end="url(#ar)"/>
+<line class="fig-ln" x1="740" y1="70" x2="740" y2="120" marker-end="url(#ar)"/>
+
+<rect class="fig-box" x="40" y="126" width="200" height="80" rx="2"/>
+<text class="fig-t" x="50" y="144">route_after_night</text>
+<text class="fig-t s" x="50" y="162">if 是猎人 → 开枪</text>
+<text class="fig-t s" x="50" y="178">if 是警长 → 传徽</text>
+<text class="fig-t s" x="50" y="194">if 够条件 → 遗言</text>
+<rect class="fig-box" x="340" y="126" width="200" height="80" rx="2"/>
+<text class="fig-t" x="350" y="144">route_after_vote</text>
+<text class="fig-t s" x="350" y="162">if 是猎人 → 开枪</text>
+<text class="fig-t s" x="350" y="178">if 是警长 → 传徽</text>
+<text class="fig-t s" x="350" y="194">if 够条件 → 遗言</text>
+<rect class="fig-box" x="640" y="126" width="200" height="80" rx="2"/>
+<text class="fig-t" x="650" y="144">route_after_shoot</text>
+<text class="fig-t s" x="650" y="162">if 是猎人 → 开枪</text>
+<text class="fig-t s" x="650" y="178">if 是警长 → 传徽</text>
+<text class="fig-t s" x="650" y="194">if 够条件 → 遗言</text>
+<text class="fig-hit" x="440" y="228" text-anchor="middle">同一段判断，三份拷贝</text>
+<line class="fig-ln thin" x1="140" y1="206" x2="180" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="140" y1="206" x2="470" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="140" y1="206" x2="760" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="440" y1="206" x2="180" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="440" y1="206" x2="470" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="440" y1="206" x2="760" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="740" y1="206" x2="180" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="740" y1="206" x2="470" y2="262" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="740" y1="206" x2="760" y2="262" marker-end="url(#ar)"/>
+
+<rect class="fig-box" x="100" y="262" width="160" height="34" rx="2"/>
+<text class="fig-t" x="180" y="284" text-anchor="middle">hunter_shoot</text>
+<rect class="fig-box" x="390" y="262" width="160" height="34" rx="2"/>
+<text class="fig-t" x="470" y="284" text-anchor="middle">badge_transfer</text>
+<rect class="fig-box" x="680" y="262" width="160" height="34" rx="2"/>
+<text class="fig-t" x="760" y="284" text-anchor="middle">last_words</text>
+
+<line class="fig-ln fig-dim" x1="40" y1="326" x2="900" y2="326"/>
+<text class="fig-t h" x="40" y="360">本设计：判断挂在状态上</text>
+
+<text class="fig-t s" x="150" y="398" text-anchor="end">夜刀</text>
+<text class="fig-t s" x="150" y="420" text-anchor="end">女巫毒</text>
+<text class="fig-t s" x="150" y="442" text-anchor="end">同守同救</text>
+<text class="fig-t s" x="150" y="464" text-anchor="end">白天票出</text>
+<text class="fig-t s" x="150" y="486" text-anchor="end">狼自爆</text>
+<text class="fig-t s" x="150" y="508" text-anchor="end">猎人开枪</text>
+<line class="fig-ln thin" x1="158" y1="394" x2="215" y2="440" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="158" y1="416" x2="215" y2="443" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="158" y1="438" x2="215" y2="446" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="158" y1="460" x2="215" y2="452" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="158" y1="482" x2="215" y2="455" marker-end="url(#ar)"/>
+<line class="fig-ln thin" x1="158" y1="504" x2="215" y2="458" marker-end="url(#ar)"/>
+
+<rect class="fig-hi" x="222" y="428" width="104" height="38" rx="2"/>
+<text class="fig-hit" x="274" y="452" text-anchor="middle">_kill()</text>
+<line class="fig-ln" x1="326" y1="447" x2="376" y2="447" marker-end="url(#ar)"/>
+
+<rect class="fig-hi" x="380" y="398" width="212" height="98" rx="2"/>
+<text class="fig-hit" x="392" y="420">_queue_deaths()</text>
+<text class="fig-t s" x="392" y="442">if 是猎人 → 开枪</text>
+<text class="fig-t s" x="392" y="462">if 是警长 → 传徽</text>
+<text class="fig-t s" x="392" y="482">if 够条件 → 遗言</text>
+<text class="fig-hit" x="486" y="516" text-anchor="middle">只有一份</text>
+
+<line class="fig-ln" x1="592" y1="420" x2="638" y2="404" marker-end="url(#ar)"/>
+<line class="fig-ln" x1="592" y1="447" x2="638" y2="447" marker-end="url(#ar)"/>
+<line class="fig-ln" x1="592" y1="474" x2="638" y2="490" marker-end="url(#ar)"/>
+<rect class="fig-box" x="642" y="386" width="186" height="32" rx="2"/>
+<text class="fig-t" x="652" y="407">_pending_hunter</text>
+<rect class="fig-box" x="642" y="431" width="186" height="32" rx="2"/>
+<text class="fig-t" x="652" y="452">_pending_badge</text>
+<rect class="fig-box" x="642" y="476" width="186" height="32" rx="2"/>
+<text class="fig-t" x="652" y="497">_pending_last_words</text>
+
+<line class="fig-ln" x1="828" y1="402" x2="866" y2="437" marker-end="url(#ar)"/>
+<line class="fig-ln" x1="828" y1="447" x2="866" y2="447" marker-end="url(#ar)"/>
+<line class="fig-ln" x1="828" y1="492" x2="866" y2="457" marker-end="url(#ar)"/>
+<rect class="fig-box" x="870" y="428" width="64" height="38" rx="2"/>
+<text class="fig-t" x="902" y="452" text-anchor="middle">_next()</text>
+<text class="fig-t s" x="902" y="486" text-anchor="middle">只读字段</text>
+</svg>
+<figcaption>同一条规则「猎人死了要开枪」在两种设计里的位置。上半：每个可能产生死亡的结算点都要在出边上重复整套后果判断，改一条规则要同步改所有拷贝，漏改不报错。下半：六条致死路径先汇入 <code>_kill</code>，后果只判断一次并写进三个待办字段；调度函数 <code>_next</code> 只读字段，不知道死亡从哪条路来，因此夜里毒死的猎人与白天票出的猎人在它眼里是同一个状态。</figcaption>
+</figure>
+<h4>汇合点的代价</h4>
+<p>这不是免费的。Moore 化意味着把"隐含在控制流里的信息"显式化成状态：<code>_pending_hunter</code>、<code>_pending_badge</code>、<code>_pending_last_words</code>、<code>_settle_to</code> 这些字段之所以存在，纯粹是为了记住"接下来该干什么"——Mealy 机不需要它们，那个信息藏在"程序正走在哪条边上"这个事实里。<b>本质是拿存储换分支数。</b></p>
+<p>更要紧的是，整个论证建立在一个前提上：<b>所有死亡都必须真的经过那个漏斗</b>。只要有一处直接写了 <code>self._alive.discard(x)</code>，后果规则对那条路径就静默失效——不报错、不崩溃，只是那种死法的猎人不开枪。语言本身不强制这件事，Java 的 <code>private</code> 同样不强制（它挡的是类外，而绕过发生在同一个类的兄弟方法里）。</p>
+<p>这个项目最终把它做成了结构约束而非纪律：存活集合的类型是 <code>frozenset</code>，<code>discard()</code> 这个方法根本不存在，误写时得到的是 <code>AttributeError</code> 而不是静默旁路；能整体重新绑定它的位置由一条解析源码的测试限定在 <code>_kill</code> 与 <code>reset</code> 之内。两者合起来，等价于 Java 的"不可变视图 + 代码审查"，只是审查是自动的。值得记下的是：这条约束加上去的当天就抓到一处违规，而它出现在项目自己的测试代码里——为了构造一个"已出局的座位"而直接改了存活集合。<b>为省事而绕过漏斗，正是这一设计最容易被破坏的方式。</b></p>
+
+<h4>这里为什么值得这样做</h4>
+<p>把判断从边上挪到状态上，代价是显式化的状态字段（见上）。这笔交易划不划算，取决于一个问题：</p>
+<p><b>同一类后果，有没有多条路径能触发？</b>本环境中有：六条致死路径对三条后果，且后果之间还能连锁——猎人的枪可以打死另一个猎人。判断挂在边上时代价是乘积，挂在状态上时是求和；后果每增加一条，前者要改六处，后者改一处。<b>反过来</b>，若流程本身是线性的——解析、切片、入库、检索、生成——就不存在需要汇合的多条路径，把判断留在边上不但够用，还能给出一张可以看的图。</p>
+<p>这一选择在本环境中付出的具体代价有三项：</p>
+<table>
+<tr><th>代价</th><th>具体表现</th></tr>
+<tr><td>流程不可视</td><td>没有图。要知道"投完票之后会发生什么"，须读进 <code>step</code>、再进 <code>_settle_if_clear</code>、再进 <code>_next</code>。图编排能直接给出一张图，这在向他人解释系统时是实打实的优势。</td></tr>
+<tr><td>状态更厚</td><td>七个字段纯粹用于记录"接下来该干什么"；它们要在重置时初始化、在重放时被覆盖，改规则时容易漏掉其中一个。</td></tr>
+<tr><td>漏斗需要额外的强制手段</td><td>语言不保证唯一入口，需要 <code>frozenset</code> 加一条解析源码的测试来补。这部分工作在图编排里不存在。</td></tr>
+</table>
+
+<h3><span class="no">§3</span>信息可见性：权限作为构造，而非检查</h3>
+<p>上一节的分歧关于控制流。第二处分歧关于信息可见性，而它同样不是实现风格之争——两种做法把权限放在了不同的位置：一种把它做成访问时的判断，另一种把它做成交付时的构造。</p>
+<h4>视图的三层结构</h4>
+<p>第二处分歧关于信息可见性，而它的核心是 <code>observe(actor)</code> 返回的那个字典长什么样。它有三层：</p>
+<div class="tree">view
+├── you / role / round / phase …   <i>你自己的基本信息</i>
+├── <b>public</b>   <i>公开层——所有座位拿到的内容完全一样</i>
+│     alive、dead、speeches、votes、exiles、sheriff …
+└── <b>private</b>  <i>私有层——因角色而异</i>
+      my_actions          <i>人人都有：你自己做过什么</i>
+      fellow_wolves       <i>只有狼有</i>
+      checks              <i>只有预言家有</i>
+      antidote_available  <i>只有女巫有</i></div>
+<p>公开层与私有层的划分本身不新鲜；关键在于<b>这个划分发生在哪一步</b>。它发生在取数时，而不是渲染时。一个村民座位拿到的 <code>private</code> 里只有一个键，一个狼座位拿到的有九个——<b>差异已经体现在数据结构上，而不是留给下游去判断</b>。</p>
+
+<figure>
+<svg viewBox="0 0 1000 330" role="img" aria-label="左：图编排中三个节点都持有同一份共享状态，可读可写，底牌在其中；右：本设计中环境状态私有，observe 是唯一出口，向三个座位分发内容不同的三份拷贝，玩家没有指回状态的通道。">
+<defs><marker id="ar2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+<path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker>
+<marker id="ar2s" viewBox="0 0 8 8" refX="1" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+<path d="M8 0 L0 4 L8 8 z" fill="currentColor"/></marker>
+<marker id="ar2a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+<path d="M0 0 L8 4 L0 8 z" fill="var(--accent)"/></marker></defs>
+
+<text class="fig-t h" x="20" y="20">图编排：共享状态</text>
+<rect class="fig-box" x="20" y="40" width="150" height="180" rx="2"/>
+<text class="fig-t s" x="32" y="62">state</text>
+<text class="fig-hit" x="32" y="86">_roles ← 底牌</text>
+<text class="fig-t s" x="32" y="108">_alive</text>
+<text class="fig-t s" x="32" y="128">_seer_checks</text>
+<text class="fig-t s" x="32" y="148">_antidote</text>
+<text class="fig-t s" x="32" y="168">_wolf_intents</text>
+<text class="fig-t s" x="32" y="188">_votes …</text>
+
+<line class="fig-ln" x1="172" y1="72" x2="248" y2="72" marker-end="url(#ar2)" marker-start="url(#ar2s)"/>
+<line class="fig-ln" x1="172" y1="130" x2="248" y2="130" marker-end="url(#ar2)" marker-start="url(#ar2s)"/>
+<line class="fig-ln" x1="172" y1="188" x2="248" y2="188" marker-end="url(#ar2)" marker-start="url(#ar2s)"/>
+<text class="fig-t s" x="210" y="64" text-anchor="middle">读全部·可写</text>
+
+<rect class="fig-box" x="252" y="54" width="150" height="36" rx="2"/>
+<text class="fig-t" x="327" y="76" text-anchor="middle">村民节点</text>
+<rect class="fig-box" x="252" y="112" width="150" height="36" rx="2"/>
+<text class="fig-t" x="327" y="134" text-anchor="middle">狼节点</text>
+<rect class="fig-box" x="252" y="170" width="150" height="36" rx="2"/>
+<text class="fig-t" x="327" y="192" text-anchor="middle">预言家节点</text>
+<text class="fig-t s" x="327" y="232" text-anchor="middle">三个节点拿到同一个对象</text>
+<text class="fig-t s" x="327" y="252" text-anchor="middle">「别读 _roles」只是约定</text>
+
+<line class="fig-ln fig-dim" x1="460" y1="24" x2="460" y2="300"/>
+
+<text class="fig-t h" x="500" y="20">本设计：私有 + 单一出口</text>
+<rect class="fig-box" x="500" y="40" width="150" height="180" rx="2"/>
+<text class="fig-t s" x="512" y="62">环境私有</text>
+<text class="fig-t s" x="512" y="86">_roles</text>
+<text class="fig-t s" x="512" y="108">_alive</text>
+<text class="fig-t s" x="512" y="128">_seer_checks</text>
+<text class="fig-t s" x="512" y="148">_antidote</text>
+<text class="fig-t s" x="512" y="168">_wolf_intents</text>
+<text class="fig-t s" x="512" y="188">_votes …</text>
+
+<line class="fig-hi" x1="652" y1="130" x2="694" y2="130" marker-end="url(#ar2a)"/>
+<rect class="fig-hi" x="698" y="108" width="96" height="44" rx="2"/>
+<text class="fig-hit" x="746" y="135" text-anchor="middle">observe()</text>
+<text class="fig-hit" x="746" y="172" text-anchor="middle">唯一出口</text>
+
+<line class="fig-ln" x1="796" y1="120" x2="838" y2="76" marker-end="url(#ar2)"/>
+<line class="fig-ln" x1="796" y1="130" x2="838" y2="130" marker-end="url(#ar2)"/>
+<line class="fig-ln" x1="796" y1="140" x2="838" y2="184" marker-end="url(#ar2)"/>
+
+<rect class="fig-box" x="842" y="54" width="150" height="44" rx="2"/>
+<text class="fig-t" x="852" y="72">5 号 · 村民</text>
+<text class="fig-t s" x="852" y="90">public + 自己的动作</text>
+<rect class="fig-box" x="842" y="108" width="150" height="44" rx="2"/>
+<text class="fig-t" x="852" y="126">3 号 · 狼</text>
+<text class="fig-t s" x="852" y="144">+ fellow_wolves</text>
+<rect class="fig-box" x="842" y="162" width="150" height="44" rx="2"/>
+<text class="fig-t" x="852" y="180">6 号 · 预言家</text>
+<text class="fig-t s" x="852" y="198">+ checks</text>
+<text class="fig-t s" x="917" y="232" text-anchor="middle">三份不同的拷贝</text>
+<text class="fig-t s" x="917" y="252" text-anchor="middle">没有指回状态的箭头</text>
+</svg>
+<figcaption>同一时刻，两种设计下各方看到的东西。左侧每个节点持有整个状态对象，底牌就在其中，不读它是一条无法被自动检查的约定；右侧玩家函数的签名是 <code>act(view, task, spec, feedback)</code>，四个参数里没有环境对象，<code>view</code> 是 <code>observe(actor)</code> 产出的拷贝——想读底牌没有渠道。注意右侧缺少的那类箭头：没有任何一条从座位指回状态。</figcaption>
+</figure>
+
+<h4>渲染层不再承担权限判断</h4>
+<p>把状态摊给每个节点的设计里，拼提示词的函数承担两件事：先判断"你是谁、你能看什么"，再把结果渲染成文字。两件事交织在一个函数里，而它有全局视角，所以两件事都必须由它做对。</p>
+<div class="two">
+<div><h5>权限判断在渲染层</h5><pre><code>def build_prompt(state, seat):
+    role = state["_roles"][seat]     # 先判断你是谁
+    lines = [公共部分]
+    if role == "werewolf":           # 再决定给你什么
+        lines.append(f"同伴：{找出所有狼}")
+    return "\n".join(lines)</code></pre></div>
+<div><h5>权限判断在取数层</h5><pre><code>def system_message(view, ...):
+    priv = view["private"]
+    lines = [f"Alive: {view['public']['alive']}"]
+    if "fellow_wolves" in priv:      # 有就渲染，没有就跳过
+        lines.append(f"同伴：{priv['fellow_wolves']}")
+    return "\n".join(lines)</code></pre></div>
+</div>
+<p>右侧那个条件判断的是<b>字典里有没有这个键</b>，不是"你是不是狼"。"狼才能看到同伴"这条规则完全不在渲染层——它在 <code>observe</code> 里，而它作用的结果就是那个键在不在。渲染层甚至不需要知道游戏里有"狼"这个概念，它只把手上有的东西翻译成文字。</p>
+<p>这个拆分之所以要紧，是因为<b>渲染有很多种，权限判断只有一种</b>。同一份视图要被拼成给模型看的提示词、渲染成给真人看的网页、序列化成给观战者的 JSON。三种渲染，三份代码；如果权限判断留在渲染层，就是三处可能写错的地方，而且真人那条路要把整套过滤重做一遍。本项目里没有为真人写过一行过滤代码——真人坐第三个座位，拿到的就是 <code>observe(3)</code>，和模型坐在那里拿到的是同一个字典。<b>这才是"玩家是可替换组件"的实际含义：换一个玩家实现，不需要重新证明隔离。</b></p>
+
+<h4>工具不是第二条信息渠道</h4>
+<p>智能体除了提示词还有工具（查询历史发言、查询票型等），这看上去像是绕过视图的另一条路。它不是：工具的执行上下文 <code>ToolContext(view, belief, task)</code> 只装了视图和智能体自己的笔记，没有环境对象。工具因此不增加信息，只是<b>分页</b>——历史发言一直在视图的公开层里，只是没有全部铺进提示词（那样太长），需要时用工具翻出来。视图里没有的东西，任何工具都变不出来。</p>
+
+
+<p>以上三小节说明了这套做法<b>是什么</b>。它并非新技巧：这类做法有名字，也有四十年的先例，而与之相对的另一类做法正是被广泛采用的那一种。</p>
+<p>把权限做成检查，是一种做法：调用方来取数据，系统判断"你有没有资格"，然后放行或拒绝。这是访问控制（ACL）的思路，文件系统的读写位、接口上的鉴权中间件都属于此类。把权限做成构造，是另一种：<b>系统交给调用方一个已经受限的对象，调用方对它拥有全部权限，而不该看的东西根本不在这个对象里。</b>这是能力式安全（capability-based security）的思路，Unix 的文件描述符是它最常见的例子——拿到描述符就能读，没拿到则连"读哪个文件"这句话都说不出来。</p>
+<div class="vs acc">
+<div><h5>访问控制</h5>
+<p class="flow">调用方发起访问
+  → 系统检查「你有权限吗」
+  → 放行 / 拒绝</p>
+<p>权限是<b>行为</b>。每个访问点都需要一次判断，判断本身可能被遗漏、被写错、被绕过。</p></div>
+<div><h5>能力式（本设计）</h5>
+<p class="flow">系统构造一份受限对象
+  → 交给调用方
+  → 调用方对它有全部权限</p>
+<p>权限是<b>数据</b>。没有访问点，因此没有判断，因此没有可遗漏的判断。</p></div>
+</div>
+<p>本设计中的 <code>observe(actor)</code> 属于后者：它不判断"这个座位能不能读全场身份"，它构造一个不含全场身份的世界并交出去。座位在那个世界里享有百分之百的权限，因为凡是它不该知道的，都已经不在世界里了。</p>
+
+<h4>由此得到的四项性质</h4>
+<div class="lemma"><span class="tag">其一</span>
+<p><b>没有检查，就没有"忘了检查"。</b>访问控制的每一个检查点都是一处可能遗漏的地方，而检查点的数量随功能增长。这里的检查点是零——不是检查得仔细，是这个动作不存在。本节末记录的那次真实泄露恰是反证：那个接口是访问控制式的（先取全部数据，再想起来应当过滤），所以漏了；修复方式是把它改成能力式，即按可见性构造出该给的那一份。</p></div>
+<div class="lemma"><span class="tag">其二</span>
+<p><b>下游可以做得很笨。</b>世界既已裁剪完毕，消费者就不必理解规则。渲染层那句"字典里有这个键就渲染"正是如此——它不知道游戏里有"狼"这个概念。若采用访问控制，每个消费者都要自己判断一次"这个座位是不是狼"，于是每个消费者都得懂规则，规则也就随消费者数量复制。</p></div>
+<div class="lemma"><span class="tag">其三</span>
+<p><b>发出去的东西可以被检查。</b>视图是数据：可以序列化、可以遍历、可以断言。而"某个检查若被触发是否正确"不是数据，是行为，无法用同样的方式验证。隔离测试之所以能存在，前提就是权限以数据形态存在。</p></div>
+<div class="lemma"><span class="tag">其四</span>
+<p><b>玩家可以由第三方实现。</b>第三方写一个 <code>act(view, task, spec, feedback)</code>，<b>想作弊也没有可作弊的对象</b>。访问控制则需要审查第三方代码有无绕过检查的路径——而这在多智能体基准里几乎是不可能完成的审查。</p></div>
+
+<h4>代价</h4>
+<p><b>要为每个参与者构造一份世界。</b>每个回合至少构造一份，观战与网页渲染时还要再构造；构造出的是拷贝，有内存与计算成本。本项目规模下可以忽略，规模更大时需要惰性构造或结构共享，而结构共享又会削弱"拷贝不可被就地修改"这一性质——这是需要权衡的地方，本项目选了简单。</p>
+<p><b>公开信息在各份世界之间重复。</b>同上，可以用共享引用消除，代价同上。</p>
+<p><b>构造函数成为单点。</b>它不防止错误，只是使错误局部化并可被机械检查（见本节末）。</p>
+
+<h4>可检查性</h4>
+<p>需要说清楚的是：这个设计<b>并不能阻止开发者写错</b>。若有人在 <code>observe</code> 里加一行把全场身份塞进视图，泄露照样发生。真正的差别在别处，有两条。</p>
+<p>其一，<b>错误只可能出现在一个地方</b>。摊开状态的设计里，任何一个拼提示词的节点都可能泄露，而节点数量随功能增长；这里能决定谁看到什么的只有 <code>observe</code> 这一个函数。审查范围从"所有渲染代码"缩成几十行。</p>
+<p>其二，也是更要紧的，<b>泄露的形态从自然语言变成了数据结构</b>。在渲染层泄露，产物是一句话，而且可以是转述的——不必写"三号是狼"，写"你的同伴很可靠"就够了，没有任何自动化手段能检查一段散文是否隐含泄露。在取数层泄露，产物必然是字典里多出的一个键或一个值，而字典是可以遍历、可以断言的。本项目的隔离测试正是这么做的：跑完整局，对每一个回合的每一个座位，把视图序列化后断言其中不出现他人的角色。</p>
+<p>这条保证的边界也应当写明。它成立的前提是<b>提示词只由视图派生</b>——渲染函数与玩家的签名里都没有环境对象，因此这条链是闭合的。但它只保证"实现符合设计"，不保证"设计正确"：若规则本身被设计成让村民看到女巫的用药情况，测试照样通过。</p>
+<p>更值得记下的是这条保证漏掉的地方会发生什么。本项目一度提供一个读取完整对局记录的接口，它<b>不经过 <code>observe</code></b>，直接从日志渲染——于是活着的玩家在对局进行中可以读到每一次夜间行动。写这个接口的人（也就是把隔离当作核心卖点、并为此写了整套测试的人）照样漏了，且数日未察觉，因为那套测试检查的是 <code>observe</code> 的输出，而这条路径绕开了它。修复方式是让该接口走同一道门。这件事同时说明两点：<b>"记得小心"确实靠不住</b>；而收口的价值不在于让人不犯错，在于犯错之后问题必然属于同一类——某处绕开了那道门——因而定位是分钟级的。</p>
+
+
+<h4>这里为什么值得这样做</h4>
+<p>构造式的代价是为每个参与者造一份世界（见上）。这笔交易划不划算，取决于一个问题：</p>
+<p><b>参与者之间是否存在信息差，且是否有动机利用它？</b>这是本文全部论证中最具决定性的一条，因为这两个条件各自决定了一件不同的事。</p>
+<p><b>信息差决定了有没有东西要过滤。</b>若所有参与者本就共享同一份信息——多数协作型流水线正是如此——那么"泄露"这个概念不成立，构造式没有任何可省的东西。</p>
+<p><b>动机决定了错误能否被发现。</b>若有信息差而无人有动机利用它，多发出去的字段最坏只是浪费 token：这是效率问题，且随时可以从日志和账单上看出来。一旦存在利用动机，泄露的性质就变了：它不抛异常（多一个键、多一句话都是合法数据）；它的后果与正常表现无法区分（狼精准投出预言家，可能是推理，也可能是看了底牌）；它也读不出来（泄露可以是转述的——不必写"三号是狼"，写"你觉得三号今天有点闪烁"就够了）。<b>这类错误是不可观测的。</b></p>
+<p>而不可观测的错误无法用事后检测来防守。访问控制式的做法本质上是事后检测路线——它假定判断写错了会被发现；构造式是事前排除路线——不该看的东西不在交出去的对象里，"判断错"这个动作不存在。它同时把检查对象从行为换成了数据：不是检查"那个判断有没有写对"，而是遍历发出去的视图断言其中不含他人身份。前者查不了，后者跑一遍就行。</p>
+<p><b>反过来</b>，若场景中不存在信息差，或存在信息差但无人有动机利用，访问控制更省事，构造式纯属多绕一层。</p>
+
+<h3><span class="no">§4</span>公理及其推论</h3>
+<div class="axiom"><b>世界状态私有于环境对象，且存在且仅存在一个函数 <code>step(actor, task, action)</code> 能修改它。</b><br>
+智能体持有的一切——观察、动作清单、反馈——都是 <code>step</code> 之外的函数从状态<b>派生出来的副本</b>，不是状态本身。</div>
+<p>这句话看上去平庸："状态当然是规则决定的"。但它管的不是"谁决定"，是"<b>谁有资格让世界前进</b>"。</p>
+<p>这个项目里真出过一个正好踩线的缺陷。有个函数叫 <code>_chat_speaker()</code>，作用是"现在轮到哪只狼说话"——名字是个查询，实现里却顺手把轮次游标加了一。于是每多调用它一次，讨论就往前推一轮：前端刷新一次页面可能推一轮，重放日志时调用次数与原来不同，重建出来的就不是同一个世界。规则一个字没变，失控的是"什么时候算走了一步"。</p>
+<p>公理成立时，<code>observe</code> 调一万次世界纹丝不动，而世界每前进一步都恰好对应日志里的一条 <code>step</code>。一局 12 人局录下来是：读 603 次、问玩家 201 次、写 201 次，日志正好 201 条。</p>
+
+<h4>两个维度，同一种构造</h4>
+<p>§3 说的是"你能看到什么"。同一种构造方式还作用在另一个维度上——"你能做什么"。</p>
+<div class="two">
+<div><h5>认知边界</h5><pre><code>observe(actor)
+  → 你能看到的世界</code></pre></div>
+<div><h5>能力边界</h5><pre><code>action_space(actor, task)
+  → 你能做的动作集</code></pre></div>
+</div>
+<p>女巫没有解药时，"救人"不是被判为非法——<b>它不在动作清单里</b>。守卫不被允许守护自己时，他自己不在目标名单里。两者与视图遵循同一条原则：不是"你申请、我审批"，而是"我造好交给你，交出去的就是全部"。因此隔离与合法性并非两条独立的性质，而是同一种构造方式分别作用于"知道什么"与"能做什么"的结果。</p>
+<p>这也解释了规则参数为什么必须是数据：<code>guard_self</code> 这一个布尔值同时决定目标名单里有没有自己、以及规则文本里那句话怎么写。<b>一条规则，两个出口，同一个源头</b>——一个出口通向能力边界，一个通向认知边界，同源因此不可能互相矛盾。</p>
+
+<h4>规则以数据形式存在一处</h4>
+<p>上一段的 <code>guard_self</code> 说明了一件更一般的事：凡是有两个以上消费者的规则，都必须写成数据。<code>step</code> 读它执行，<code>rules_text</code> 读它渲染给模型看，测试读它构造断言；改数据三处同变，只改引擎不改数据则测试失败。"改了代码忘了改提示词"这类缺陷因此被消掉。</p>
+<p>需要说明的是这条约束<b>做到什么程度取决于消费者数量，而非越彻底越好</b>。行为规则有两个消费者（引擎与规则文本），所以抽成了 <code>Variant</code> 的字段；可见性规则只有一个消费者（构造视图那一次），因此留在 <code>observe</code> 的代码里，没有抽成配置表。若哪天要把"狼互相知道身份"写进给模型看的规则文本，它就有了第二个消费者，那时才该抽。抽象过度与抽象不足同样是成本。</p>
+
+<h4>确定性</h4>
+<p><code>world == f(seed, journal)</code>。世界完全由种子与动作日志决定：中断的对局可以重放接续且重放不询问模型，A/B 实验可以用同一副牌跑两套规则做配对，缺陷可以精确复现到第 N 个回合。这条性质本身直接来自公理——若存在 <code>step</code> 之外的状态写入，日志就不再是完整的输入序列。它与图编排的检查点机制如何取舍，是下一章的内容。</p>
+
+<h3><span class="no">§5</span>持久化：记录状态，还是记录动作</h3>
+<p>确定性的用途——重放、断点续跑、同种子对照——在图编排框架里也有对应物：检查点（checkpointer）。两者解决同一个问题，做法却相反。这一节把它们并排放好，并说明这个场景为何选了后者。</p>
+
+<h4>快照式：图编排的做法</h4>
+<p>图编排框架在每个超步（super-step，一次调度中所有节点的并行执行）之后写一份检查点。一份检查点里装的是<b>状态本身</b>：通道值（<code>channel_values</code>）、通道版本（<code>channel_versions</code>）与版本可见性记录（<code>versions_seen</code>）；外层还包着线程与检查点标识、元数据、本超步内已完成节点的中间写入（<code>pending_writes</code>），以及指向父检查点的引用。</p>
+<p>恢复的语义是：<b>检查点之前的节点被跳过</b>（结果已在快照里），<b>之后的节点重新执行</b>。为容错，超步内单个节点失败时，同超步已成功节点的写入会被保留，恢复时不重跑它们。</p>
+
+<h4>日志式：本设计的做法</h4>
+<p>这里不存状态，只存动作。日志的每一条就三样东西：<b>谁、做什么任务、做了什么</b>。恢复时用同一个种子重新发牌，再把动作依次喂回 <code>step</code>：</p>
+<pre><code>def replay(env, seed, journal, upto=None):
+    turn = env.reset(seed)                                    # 同种子 → 同样的初始状态
+    for rec in journal[:upto]:
+        assert (turn.actor, turn.task) == (rec.actor, rec.task), "日志对不上"
+        turn = env.step(rec.actor, rec.task, rec.action)       # 动作从日志读，不问模型
+    return turn</code></pre>
+<p>正常对局时 <code>step</code> 的第三个参数来自模型，重放时来自日志；除此之外走的是同一套规则与结算。世界因此是种子与日志的函数，重放不过是对同一串输入的一次折叠。</p>
+
+<figure>
+<svg viewBox="0 0 940 430" role="img" aria-label="上半：快照式每一步存一份完整状态，相邻两份仅有一条记录不同，其余内容重复；日志式每一步只存一行动作。下半：同一局 81 个回合，快照合计 526773 字节，日志合计 8201 字节，相差约六十四倍。">
+<defs><marker id="ar3" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+<path d="M0 0 L8 4 L0 8 z" fill="currentColor"/></marker></defs>
+
+<text class="fig-t h" x="20" y="22">同一局的每一步，两种存法</text>
+
+<text class="fig-t" x="120" y="102" text-anchor="end">快照</text>
+<text class="fig-t s" x="120" y="120" text-anchor="end">存世界</text>
+<rect class="fig-box" x="140" y="46" width="96" height="104" rx="2"/>
+<line class="fig-ln thin" x1="148" y1="58" x2="228" y2="58"/>
+<line class="fig-ln thin" x1="148" y1="74" x2="228" y2="74"/>
+<line class="fig-ln thin" x1="148" y1="90" x2="228" y2="90"/>
+<line class="fig-ln thin" x1="148" y1="106" x2="228" y2="106"/>
+<line class="fig-ln thin" x1="148" y1="122" x2="228" y2="122"/>
+<line class="fig-ln thin" x1="148" y1="138" x2="228" y2="138"/>
+<rect x="148" y="53" width="80" height="9" fill="var(--accent)" opacity=".85"/>
+<rect class="fig-box" x="262" y="46" width="96" height="104" rx="2"/>
+<line class="fig-ln thin" x1="270" y1="58" x2="350" y2="58"/>
+<line class="fig-ln thin" x1="270" y1="74" x2="350" y2="74"/>
+<line class="fig-ln thin" x1="270" y1="90" x2="350" y2="90"/>
+<line class="fig-ln thin" x1="270" y1="106" x2="350" y2="106"/>
+<line class="fig-ln thin" x1="270" y1="122" x2="350" y2="122"/>
+<line class="fig-ln thin" x1="270" y1="138" x2="350" y2="138"/>
+<rect x="270" y="69" width="80" height="9" fill="var(--accent)" opacity=".85"/>
+<rect class="fig-box" x="384" y="46" width="96" height="104" rx="2"/>
+<line class="fig-ln thin" x1="392" y1="58" x2="472" y2="58"/>
+<line class="fig-ln thin" x1="392" y1="74" x2="472" y2="74"/>
+<line class="fig-ln thin" x1="392" y1="90" x2="472" y2="90"/>
+<line class="fig-ln thin" x1="392" y1="106" x2="472" y2="106"/>
+<line class="fig-ln thin" x1="392" y1="122" x2="472" y2="122"/>
+<line class="fig-ln thin" x1="392" y1="138" x2="472" y2="138"/>
+<rect x="392" y="85" width="80" height="9" fill="var(--accent)" opacity=".85"/>
+<rect class="fig-box" x="506" y="46" width="96" height="104" rx="2"/>
+<line class="fig-ln thin" x1="514" y1="58" x2="594" y2="58"/>
+<line class="fig-ln thin" x1="514" y1="74" x2="594" y2="74"/>
+<line class="fig-ln thin" x1="514" y1="90" x2="594" y2="90"/>
+<line class="fig-ln thin" x1="514" y1="106" x2="594" y2="106"/>
+<line class="fig-ln thin" x1="514" y1="122" x2="594" y2="122"/>
+<line class="fig-ln thin" x1="514" y1="138" x2="594" y2="138"/>
+<rect x="514" y="61" width="80" height="9" fill="var(--accent)" opacity=".85"/>
+<rect class="fig-box" x="628" y="46" width="96" height="104" rx="2"/>
+<line class="fig-ln thin" x1="636" y1="58" x2="716" y2="58"/>
+<line class="fig-ln thin" x1="636" y1="74" x2="716" y2="74"/>
+<line class="fig-ln thin" x1="636" y1="90" x2="716" y2="90"/>
+<line class="fig-ln thin" x1="636" y1="106" x2="716" y2="106"/>
+<line class="fig-ln thin" x1="636" y1="122" x2="716" y2="122"/>
+<line class="fig-ln thin" x1="636" y1="138" x2="716" y2="138"/>
+<rect x="636" y="77" width="80" height="9" fill="var(--accent)" opacity=".85"/>
+<rect class="fig-box" x="750" y="46" width="96" height="104" rx="2"/>
+<line class="fig-ln thin" x1="758" y1="58" x2="838" y2="58"/>
+<line class="fig-ln thin" x1="758" y1="74" x2="838" y2="74"/>
+<line class="fig-ln thin" x1="758" y1="90" x2="838" y2="90"/>
+<line class="fig-ln thin" x1="758" y1="106" x2="838" y2="106"/>
+<line class="fig-ln thin" x1="758" y1="122" x2="838" y2="122"/>
+<line class="fig-ln thin" x1="758" y1="138" x2="838" y2="138"/>
+<rect x="758" y="69" width="80" height="9" fill="var(--accent)" opacity=".85"/>
+<text class="fig-t s" x="836" y="88">每份都是完整的世界</text>
+<text class="fig-t s" x="836" y="106">相邻两份 97.7% 相同</text>
+<text class="fig-hit" x="836" y="128">彩色那条 = 这步唯一变的</text>
+<text class="fig-t s" x="836" y="146">6,424 字节／份</text>
+
+<text class="fig-t" x="120" y="219" text-anchor="end">棋谱</text>
+<text class="fig-t s" x="120" y="236" text-anchor="end">存动作</text>
+<rect class="fig-hi" x="140" y="206" width="96" height="16" rx="2"/>
+<rect class="fig-hi" x="262" y="206" width="96" height="16" rx="2"/>
+<rect class="fig-hi" x="384" y="206" width="96" height="16" rx="2"/>
+<rect class="fig-hi" x="506" y="206" width="96" height="16" rx="2"/>
+<rect class="fig-hi" x="628" y="206" width="96" height="16" rx="2"/>
+<rect class="fig-hi" x="750" y="206" width="96" height="16" rx="2"/>
+<text class="fig-t s" x="836" y="212">(谁, 做什么, 做了什么)</text>
+<text class="fig-t s" x="836" y="230">101 字节／条</text>
+<text class="fig-t s" x="188" y="240" text-anchor="middle">第 1 步</text>
+<text class="fig-t s" x="310" y="240" text-anchor="middle">第 2 步</text>
+<text class="fig-t s" x="432" y="240" text-anchor="middle">第 3 步</text>
+<text class="fig-t s" x="554" y="240" text-anchor="middle">第 4 步</text>
+<text class="fig-t s" x="676" y="240" text-anchor="middle">第 5 步</text>
+<text class="fig-t s" x="798" y="240" text-anchor="middle">第 6 步</text>
+
+<line class="fig-ln fig-dim" x1="20" y1="272" x2="920" y2="272"/>
+<text class="fig-t h" x="20" y="300">整局 81 个回合，累计占用</text>
+
+<rect class="fig-box" x="140" y="316" width="700" height="34" rx="2"/>
+<text class="fig-t" x="130" y="338" text-anchor="end">快照</text>
+<text class="fig-t s" x="490" y="338" text-anchor="middle">526,773 字节</text>
+
+<rect class="fig-hi" x="140" y="364" width="11" height="34" rx="2"/>
+<text class="fig-t" x="130" y="386" text-anchor="end">棋谱</text>
+<text class="fig-t s" x="163" y="386">8,201 字节</text>
+<text class="fig-hit" x="490" y="386" text-anchor="middle">相差 64 倍——差的那部分是被反复重存的同一个世界</text>
+</svg>
+<figcaption>同一局八人局、八十一个回合的真实测量。上半展示单步：快照每一步存下整个世界，而相邻两份之间只有一条记录不同（图中着色的那一条），其余内容重复；日志每一步只存一行动作。下半是整局累计，两条长度按真实字节数等比绘制。需要说明的是快照式并非做错了什么——它换来的是不要求转移确定，见本节末。</figcaption>
+</figure>
+<h4>不构成差别的部分</h4>
+<p>两点常被误当作差别，应当先排除。</p>
+<p><b>其一，"恢复时不必重付前缀的代价"两者都做得到。</b>图编排跳过已完成节点，本设计重放时不调用模型，在省钱这一点上没有分别。</p>
+<p><b>其二，两者都支持中途接管。</b>人工介入、从中间某点继续，都不是任何一方独有。</p>
+
+<h4>四处真正的差别</h4>
+<div class="lemma"><span class="tag">其一 · 存下来的东西有没有意义</span>
+<p>日志是 <code>(谁, 做什么, 做了什么)</code> 的序列，它同时就是这局对局的记录本身：统计兜底率、做同种子配对、审计某个模型在第几回合做了什么判断，用的都是它。快照存的是运行时内部表示，能恢复执行，但不能直接回答"这局发生了什么"。</p></div>
+<div class="lemma"><span class="tag">其二 · 体积与增长</span>
+<p>快照每个超步一份，长线程上会持续增长；官方文档为此提供了增量通道（<code>DeltaChannel</code>），只存增量以压缩体积。日志每回合一行，而那一行本就是模型返回的 JSON——它天然可序列化，不需要额外的序列化约定。</p></div>
+<div class="lemma"><span class="tag">其三 · 失效时的表现</span>
+<p>两者都会因"被恢复的东西与当前代码不匹配"而失效：快照绑定图结构与通道版本，日志绑定规则。差别在于失效如何暴露。日志式重放每一步都断言"环境认为该谁行动"与"日志记录的是谁"一致，不一致当场停下并指出第几步分叉；<b>它不会悄悄重建出一个不同的世界</b>。</p></div>
+<div class="lemma"><span class="tag">其四 · 重放会不会重新产生副作用</span>
+<p>图编排的文档明确指出：<b>中断在重放时总会被重新触发</b>，若配置了人工审批，恢复时需要重新审批一次。这是快照式的固有性质——检查点之后的节点要重新执行，那么这些节点的副作用也会重新发生。日志式重放不重新执行任何外部动作，因为动作的结果已经在日志里；重放只是把它们重新应用到状态上。</p></div>
+
+<h4>代价：日志式要求确定性，快照式不要求</h4>
+<p>这是快照式实打实的优势，必须写明。快照记录的是"状态成了什么样"，因此节点内部是否确定无关紧要——调了外部服务、用了时间戳、模型温度不为零，快照照样存得住、恢复得了。日志式记录的是"做了什么"，要从它重建状态，就必须保证同样的动作作用在同样的状态上得到同样的结果；任何非确定性的来源都不能进入状态转移。</p>
+<p>另有一处量级上的取舍：日志式恢复是重新计算，代价随步数增长；快照式是反序列化，代价随状态大小增长。步数多而状态小的系统，日志式吃亏。本环境每局约二百回合、状态数十个字段，重放一百多个回合耗时不足一秒，因此这一项不构成约束。</p>
+
+<h4>这里为什么选日志式</h4>
+<p><b>其一，产出要当数据用。</b>这个环境的目的不是打完一局，而是产出可统计的记录。日志既是存档又是记录，两者本来就是同一份东西；若采用快照，仍需另外维护一份对局记录，于是又出现了两个必须保持一致的来源——正是 §1 所述的那类问题。</p>
+<p><b>其二，要审计的是过程而非结果。</b>"这个模型在第 137 回合做了什么判断、依据是什么"，快照答不了，它只说得出那一刻状态是什么样；日志逐条记着谁做了什么，配合每步的推理字段可以直接读。</p>
+<p><b>其三，确定性在这里是本来就要的东西。</b>日志式的前提（转移必须确定）对本设计不是额外负担——公理已经把状态写入收敛到 <code>step</code> 一处，而规则本身不依赖时间与外部服务。前提免费，代价便只剩重算，而重算在这个规模下可以忽略。</p>
+<p><b>反过来</b>，若节点会调用外部服务、状态里存着不可重现的东西，或者流程只需恢复执行而不需被审计，快照式是更合适的选择——它不要求你放弃非确定性。</p>
+
+<h3><span class="no">§6</span>三处与常规做法相反的取舍</h3>
+<h4>身份是编号，行动能力是对象</h4>
+<p>环境里的一切都用座位号称呼参与者，而"能做出动作的那个东西"是另一个对象，由驱动循环用编号去查表拿到。直觉上应该合并成一个玩家对象——但一旦合并，环境就持有了智能体的引用，"环境只通过 <code>observe</code> 供给信息"这条就没有了强制力。分开的代价是多一次查表，换来的是隔离从约定变成结构。</p>
+<h4><code>step</code> 返回下一个轮到谁</h4>
+<p>更常见的写法是把"下一步是谁"做成独立方法。但刚改完状态的那个函数最清楚下一个是谁；拆出去就等于让"下一步"有了第二个来源，两个函数读同一份状态各推一遍，迟早分叉。代价是 <code>step</code> 的职责变重，收益是控制流只有一处。<b>框架因此不知道"投完票就到晚上"</b>——它只是把 <code>step</code> 返回的东西喂回循环。</p>
+<h4>非法动作作为对话的一部分</h4>
+<p>模型给出非法动作时，校验返回的是<b>理由字符串</b>，这个理由回灌给模型让它重试。三次仍不合法才使用环境定义的兜底动作，并<b>标记</b>该回合。标记是必须的：兜底动作本身合法，不标记的话日志就把系统代打记成了模型的判断，之后基于日志的一切分析都建立在假数据上。</p>
+
+<h3><span class="no">§7</span>有意省略的部分</h3>
+<table>
+<tr><th>没有</th><th>理由</th></tr>
+<tr><td>图 / DAG</td><td>控制流由状态决定，不是预先声明的。声明一份就等于给"下一步"加了第二个来源。</td></tr>
+<tr><td>检索式记忆</td><td>单局上下文长度可控，历史发言可由工具按需查询。引入向量检索会在评测里多一个不可控变量。</td></tr>
+<tr><td>沙箱</td><td>工具全部是对本局状态的纯查询，不触碰外部世界。没有需要隔离的副作用。</td></tr>
+<tr><td>运行时的通用能力</td><td>Layer A 不含重试策略、不含日志格式、不含并发模型。这些是使用者的选择，写进框架就成了所有人的约束。</td></tr>
+</table>
+
+<h3><span class="no">§8</span>为什么以狼人杀为载体</h3>
+<p>前面各节论证的是设计本身。但一套设计只能在它被检验过的场景里被相信，因此有必要说明：这个载体是怎么来的，它压到了哪些地方，又有哪些地方它压不到。</p>
+
+<h4>它不是被挑出来的，是起点</h4>
+<p>诚实地说，这里没有"先确定研究问题、再挑选合适基准"的过程。项目最初就是一个狼人杀对局程序；本文所述的这层契约，是在那个程序变得难以维护之后从中抽出来的——引擎一份规则、提示词一份规则、校验一份规则，三份各自演化，于是才有了§1 的问题陈述。<b>论证的顺序与发生的顺序相反</b>，这一点不应当被叙述掩盖。</p>
+<p>但这不妨碍事后判断它是否合适。§2、§3 与 §5 各自记录了三处选择在这个场景下为何值得；此处补充两点便利，以及它检验不到的地方。</p>
+
+<h4>两点便利</h4>
+<p><b>真人可以坐进去。</b>这是检验"玩家是可替换组件"最直接的方式：一个人坐进第三个座位，收到的必须与模型收到的完全一致，否则要么泄露、要么不公平。这条约束若不成立，隔离就只是纸面性质。</p>
+<p><b>领域知识为零。</b>规则是常识，读者不需要背景就能判断"这个座位不该看到那个信息"是否成立。换成供应链博弈或金融撮合，论证同样成立，但读者要先学一套领域术语才能验证它。</p>
+
+<h4>它检验不到的地方</h4>
+<p>把边界写清楚，否则前面的结论会被读成比实际更强的东西。</p>
+<table>
+<tr><th>未被检验</th><th>原因</th></tr>
+<tr><td>沙箱与副作用隔离</td><td>本环境的全部工具都是对本局状态的纯查询，不触碰外部世界。真实智能体系统里的工具会写数据库、发请求、花钱，那类隔离本设计一行未写。</td></tr>
+<tr><td>长程记忆与上下文压缩</td><td>单局上下文长度可控，历史发言按需检索即可。需要跨会话记忆的场景，这里没有任何证据。</td></tr>
+<tr><td>分布式与并发一致性</td><td>一局一个线程，状态在进程内。多进程共享一个环境时公理如何维持，本设计未做回答。</td></tr>
+<tr><td>规模</td><td>最大十五个座位、每局约二百回合。参与者数量再高一个量级时，"为每个人构造一份世界"的开销是否仍可接受，未经验证。</td></tr>
+</table>
+<p>换言之，本文的结论限于<b>回合制、进程内、参与者数量在十几量级、工具无副作用</b>的对抗环境。超出这个范围的部分，本项目没有提供证据。</p>
+
+<h3><span class="no">§9</span>两项已被推翻的论断</h3>
+<p>把这一节写进来，是因为设计过程里最有价值的部分往往是被否掉的那些。</p>
+<div class="retract"><span class="tag">收回其一 · 论证方式</span>
+<p>最初为"隔离必须由框架保证"给出的理由是：<b>有人可能写错</b>——某个提示词拼装函数为省事直接读取了全场身份。</p>
+<blockquote>不认可，你不能假设有人写错，只要框架本身可以保证狼人看不到不该看的东西即可了。<span class="who">—— 项目过程中的原话</span></blockquote>
+<p>这个反对是对的，而且比原来的理由更强。"怕人写错"是概率论证，靠的是纪律；"结构上不给机会"是构造论证，靠的是类型和可见性。<code>observe</code> 返回副本、状态私有、玩家拿不到环境引用——这三件事一起使得<b>想泄露也没有渠道</b>。公理的最终形式来自这次反对。</p></div>
+<div class="retract"><span class="tag">收回其二 · 一个多余的分类</span>
+<p>曾把规则分成两类：<b>参数型</b>（能触发开枪的死因集合、投票能否弃权）写成结构化数据，<b>逻辑型</b>（同守同救不抵消、平票无人出局）只能是代码。并据此设计了两套处理方式。</p>
+<blockquote>我没懂的地方是，现在无非是要不要把句子写死……所以我没懂这里分成两种的意义在哪。<span class="who">—— 项目过程中的原话</span></blockquote>
+<p>确实没有意义。两类规则要的是同一件事：<b>只写一遍，三处引用</b>。参数型引用的是数据结构，逻辑型引用的是同一个函数——差别只在被引用的东西长什么样，不构成两种设计。这个分类被删掉，关于规则数据的那一节从两段合并成一句。</p>
+<p>顺带删掉的还有一个自造词。原先把"从规则数据构造断言的测试"叫作<b>探针测试</b>，被指出这就是普通测试，没必要造名词。造词会让读者以为有新机制，是纯粹的损耗。</p></div>
+
+<h3><span class="no">§10</span>契约层的规模</h3>
+<h4>两项与机制无关的代价</h4>
+<p>以上各章分别记录了每处选择自身的代价。还有两项与具体机制无关，属于自研运行时的固有成本。</p>
+<p><b>没有生态。</b>检查点、链路追踪、可视化调试器，全部自行实现。</p>
+<p><b>无人认识它。</b>三百五十八行是自己的三百五十八行：新人要读完才能改，而某个通用框架的新人可能已经会了。这一条在真实团队中往往权重最高，也最容易在技术论证中被忽略——若团队已在使用某个编排框架、而场景又属于协作型，直接沿用它是更好的选择。</p>
+
+
+<p>Layer A 是 358 行：环境暴露五个方法，玩家暴露一个方法，<code>step</code> 的返回是"下一个轮到谁"或"结束了"的联合类型。整个驱动循环是十七行。</p>
+<p>薄本身不是目的，可验证才是。一层薄到能被完整覆盖的契约，才能说"隔离由框架保证"而不是"由使用者遵守"。换一个对抗场景——拍卖、谈判、多方博弈——重写的是规则层；这十七行不动。</p>
+<p>这也是它与编排框架的分工：编排框架解决"多个步骤怎么串起来"，这层解决"多个参与者对同一个世界的认知怎么受控地分发"。前者的答案是图，后者的答案是一条公理和四条从它推出来的性质。</p>
+</div>
+</section>
+
+
+<script>
+const D = {"seed": 8, "roles": {"1": "villager", "2": "villager", "3": "wolf", "4": "villager", "5": "hunter", "6": "seer", "7": "wolf"}, "rules_text": "7 seats: 2 wolf, 1 seer, 1 hunter, 3 villager.\n- The hunter fires whenever he dies, whatever killed him.\n- Everyone alive must vote; you cannot vote for yourself.\n- In the morning the table learns who died, never how.", "init": {"state": null}, "reset": {"after": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": [], "kill_votes": {}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "log": [{"fn": "_next", "state": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": [], "kill_votes": {}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "ret": {"actor": "3", "task": "wolf_kill"}}]}, "rounds": [{"k": 1, "actor": "3", "task": "wolf_kill", "action": "6", "view": {"you": "3", "role": "wolf", "day": 1, "phase": "night", "alive": ["1", "2", "3", "4", "5", "6", "7"], "deaths": [], "speeches": [], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "choice", "options": ["1", "2", "4", "5", "6"], "fallback": "1"}, "before": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": [], "kill_votes": {}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "after": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3"], "kill_votes": {"3": "6"}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "log": [{"fn": "_settle", "before": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3"], "kill_votes": {"3": "6"}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "after": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3"], "kill_votes": {"3": "6"}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}}, {"fn": "_next", "state": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3"], "kill_votes": {"3": "6"}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "ret": {"actor": "6", "task": "seer_check"}}], "ret": {"actor": "6", "task": "seer_check"}}, {"k": 2, "actor": "6", "task": "seer_check", "action": "7", "view": {"you": "6", "role": "seer", "day": 1, "phase": "night", "alive": ["1", "2", "3", "4", "5", "6", "7"], "deaths": [], "speeches": [], "seer_log": {}}, "spec": {"kind": "choice", "options": ["1", "2", "3", "4", "5", "7"], "fallback": "1"}, "before": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3"], "kill_votes": {"3": "6"}, "seer_log": {}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "after": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3", "6"], "kill_votes": {"3": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "log": [{"fn": "_settle", "before": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3", "6"], "kill_votes": {"3": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "after": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3", "6"], "kill_votes": {"3": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}}, {"fn": "_next", "state": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3", "6"], "kill_votes": {"3": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "ret": {"actor": "7", "task": "wolf_kill"}}], "ret": {"actor": "7", "task": "wolf_kill"}}, {"k": 3, "actor": "7", "task": "wolf_kill", "action": "6", "view": {"you": "7", "role": "wolf", "day": 1, "phase": "night", "alive": ["1", "2", "3", "4", "5", "6", "7"], "deaths": [], "speeches": [], "pack": ["3", "7"], "pack_kill_votes": {"3": "6"}}, "spec": {"kind": "choice", "options": ["1", "2", "4", "5", "6"], "fallback": "1"}, "before": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3", "6"], "kill_votes": {"3": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 0}, "log": [{"fn": "_settle", "before": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3", "6", "7"], "kill_votes": {"3": "6", "7": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 0}}, {"fn": "_kill", "seat": "6", "cause": "wolf", "role": "seer", "before": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "6", "7"], "acted": ["3", "6", "7"], "kill_votes": {"3": "6", "7": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": [], "speeches": 0}, "after": {"phase": "night", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["3", "6", "7"], "kill_votes": {"3": "6", "7": "6"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 0}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 0}, "ret": {"actor": "1", "task": "speak"}}], "ret": {"actor": "1", "task": "speak"}}, {"k": 4, "actor": "1", "task": "speak", "action": "…", "view": {"you": "1", "role": "villager", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": []}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 0}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 1}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 1}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 1}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 1}, "ret": {"actor": "2", "task": "speak"}}], "ret": {"actor": "2", "task": "speak"}}, {"k": 5, "actor": "2", "task": "speak", "action": "…", "view": {"you": "2", "role": "villager", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"]]}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 1}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 2}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 2}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 2}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 2}, "ret": {"actor": "3", "task": "speak"}}], "ret": {"actor": "3", "task": "speak"}}, {"k": 6, "actor": "3", "task": "speak", "action": "…", "view": {"you": "3", "role": "wolf", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"]], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 2}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 3}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 3}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 3}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 3}, "ret": {"actor": "4", "task": "speak"}}], "ret": {"actor": "4", "task": "speak"}}, {"k": 7, "actor": "4", "task": "speak", "action": "…", "view": {"you": "4", "role": "villager", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"]]}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 3}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 4}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 4}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 4}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 4}, "ret": {"actor": "5", "task": "speak"}}], "ret": {"actor": "5", "task": "speak"}}, {"k": 8, "actor": "5", "task": "speak", "action": "…", "view": {"you": "5", "role": "hunter", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"]]}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 4}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 5}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 5}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 5}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 5}, "ret": {"actor": "7", "task": "speak"}}], "ret": {"actor": "7", "task": "speak"}}, {"k": 9, "actor": "7", "task": "speak", "action": "…", "view": {"you": "7", "role": "wolf", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"]], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 5}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "ret": {"actor": "1", "task": "vote"}}], "ret": {"actor": "1", "task": "vote"}}, {"k": 10, "actor": "1", "task": "vote", "action": "3", "view": {"you": "1", "role": "villager", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]]}, "spec": {"kind": "choice", "options": ["2", "3", "4", "5", "7"], "fallback": "2"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "ret": {"actor": "2", "task": "vote"}}], "ret": {"actor": "2", "task": "vote"}}, {"k": 11, "actor": "2", "task": "vote", "action": "3", "view": {"you": "2", "role": "villager", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]]}, "spec": {"kind": "choice", "options": ["1", "3", "4", "5", "7"], "fallback": "1"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "ret": {"actor": "3", "task": "vote"}}], "ret": {"actor": "3", "task": "vote"}}, {"k": 12, "actor": "3", "task": "vote", "action": "7", "view": {"you": "3", "role": "wolf", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "choice", "options": ["1", "2", "4", "5", "7"], "fallback": "1"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "ret": {"actor": "4", "task": "vote"}}], "ret": {"actor": "4", "task": "vote"}}, {"k": 13, "actor": "4", "task": "vote", "action": "2", "view": {"you": "4", "role": "villager", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]]}, "spec": {"kind": "choice", "options": ["1", "2", "3", "5", "7"], "fallback": "1"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "ret": {"actor": "5", "task": "vote"}}], "ret": {"actor": "5", "task": "vote"}}, {"k": 14, "actor": "5", "task": "vote", "action": "4", "view": {"you": "5", "role": "hunter", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]]}, "spec": {"kind": "choice", "options": ["1", "2", "3", "4", "7"], "fallback": "1"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "ret": {"actor": "7", "task": "vote"}}], "ret": {"actor": "7", "task": "vote"}}, {"k": 15, "actor": "7", "task": "vote", "action": "5", "view": {"you": "7", "role": "wolf", "day": 1, "phase": "day", "alive": ["1", "2", "3", "4", "5", "7"], "deaths": [[1, "6"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "choice", "options": ["1", "2", "3", "4", "5"], "fallback": "1"}, "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "night", "day": 2, "alive": ["1", "2", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4", "7": "5"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "night", "day": 2, "alive": ["1", "2", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3"], "speeches": 6}}, {"fn": "_kill", "seat": "3", "cause": "exile", "role": "wolf", "before": {"phase": "day", "day": 1, "alive": ["1", "2", "3", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4", "7": "5"}, "pending": [], "deaths": ["d1:6"], "speeches": 6}, "after": {"phase": "day", "day": 1, "alive": ["1", "2", "4", "5", "7"], "acted": ["1", "2", "3", "4", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "3", "2": "3", "3": "7", "4": "2", "5": "4", "7": "5"}, "pending": [], "deaths": ["d1:6", "d1:3"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "night", "day": 2, "alive": ["1", "2", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3"], "speeches": 6}, "ret": {"actor": "7", "task": "wolf_kill"}}], "ret": {"actor": "7", "task": "wolf_kill"}}, {"k": 16, "actor": "7", "task": "wolf_kill", "action": "4", "view": {"you": "7", "role": "wolf", "day": 2, "phase": "night", "alive": ["1", "2", "4", "5", "7"], "deaths": [[1, "6"], [1, "3"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "choice", "options": ["1", "2", "4", "5"], "fallback": "1"}, "before": {"phase": "night", "day": 2, "alive": ["1", "2", "4", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3"], "speeches": 6}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 6}, "log": [{"fn": "_settle", "before": {"phase": "night", "day": 2, "alive": ["1", "2", "4", "5", "7"], "acted": ["7"], "kill_votes": {"7": "4"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3"], "speeches": 6}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 6}}, {"fn": "_kill", "seat": "4", "cause": "wolf", "role": "villager", "before": {"phase": "night", "day": 2, "alive": ["1", "2", "4", "5", "7"], "acted": ["7"], "kill_votes": {"7": "4"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3"], "speeches": 6}, "after": {"phase": "night", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["7"], "kill_votes": {"7": "4"}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 6}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 6}, "ret": {"actor": "1", "task": "speak"}}], "ret": {"actor": "1", "task": "speak"}}, {"k": 17, "actor": "1", "task": "speak", "action": "…", "view": {"you": "1", "role": "villager", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"]]}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 6}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 7}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 7}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 7}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 7}, "ret": {"actor": "2", "task": "speak"}}], "ret": {"actor": "2", "task": "speak"}}, {"k": 18, "actor": "2", "task": "speak", "action": "…", "view": {"you": "2", "role": "villager", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"]]}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 7}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 8}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 8}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 8}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 8}, "ret": {"actor": "5", "task": "speak"}}], "ret": {"actor": "5", "task": "speak"}}, {"k": 19, "actor": "5", "task": "speak", "action": "…", "view": {"you": "5", "role": "hunter", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"], [2, "2", "…"]]}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 8}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 9}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 9}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 9}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 9}, "ret": {"actor": "7", "task": "speak"}}], "ret": {"actor": "7", "task": "speak"}}, {"k": 20, "actor": "7", "task": "speak", "action": "…", "view": {"you": "7", "role": "wolf", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"], [2, "2", "…"], [2, "5", "…"]], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "text", "options": [], "fallback": "(passes)"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 9}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "ret": {"actor": "1", "task": "vote"}}], "ret": {"actor": "1", "task": "vote"}}, {"k": 21, "actor": "1", "task": "vote", "action": "5", "view": {"you": "1", "role": "villager", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"], [2, "2", "…"], [2, "5", "…"], [2, "7", "…"]]}, "spec": {"kind": "choice", "options": ["2", "5", "7"], "fallback": "2"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "ret": {"actor": "2", "task": "vote"}}], "ret": {"actor": "2", "task": "vote"}}, {"k": 22, "actor": "2", "task": "vote", "action": "7", "view": {"you": "2", "role": "villager", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"], [2, "2", "…"], [2, "5", "…"], [2, "7", "…"]]}, "spec": {"kind": "choice", "options": ["1", "5", "7"], "fallback": "1"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "ret": {"actor": "5", "task": "vote"}}], "ret": {"actor": "5", "task": "vote"}}, {"k": 23, "actor": "5", "task": "vote", "action": "2", "view": {"you": "5", "role": "hunter", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"], [2, "2", "…"], [2, "5", "…"], [2, "7", "…"]]}, "spec": {"kind": "choice", "options": ["1", "2", "7"], "fallback": "1"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}}, {"fn": "_next", "state": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "ret": {"actor": "7", "task": "vote"}}], "ret": {"actor": "7", "task": "vote"}}, {"k": 24, "actor": "7", "task": "vote", "action": "5", "view": {"you": "7", "role": "wolf", "day": 2, "phase": "day", "alive": ["1", "2", "5", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"], [2, "2", "…"], [2, "5", "…"], [2, "7", "…"]], "pack": ["3", "7"], "pack_kill_votes": {}}, "spec": {"kind": "choice", "options": ["1", "2", "5"], "fallback": "1"}, "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "night", "day": 3, "alive": ["1", "2", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5"], "speeches": 10}, "log": [{"fn": "_settle", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2", "7": "5"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "night", "day": 3, "alive": ["1", "2", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": ["5"], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5"], "speeches": 10}}, {"fn": "_kill", "seat": "5", "cause": "exile", "role": "hunter", "before": {"phase": "day", "day": 2, "alive": ["1", "2", "5", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2", "7": "5"}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4"], "speeches": 10}, "after": {"phase": "day", "day": 2, "alive": ["1", "2", "7"], "acted": ["1", "2", "5", "7"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {"1": "5", "2": "7", "5": "2", "7": "5"}, "pending": ["5"], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5"], "speeches": 10}}, {"fn": "_next", "state": {"phase": "night", "day": 3, "alive": ["1", "2", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5"], "speeches": 10}, "ret": {"actor": "5", "task": "shoot"}}], "ret": {"actor": "5", "task": "shoot"}}, {"k": 25, "actor": "5", "task": "shoot", "action": "2", "view": {"you": "5", "role": "hunter", "day": 3, "phase": "night", "alive": ["1", "2", "7"], "deaths": [[1, "6"], [1, "3"], [2, "4"], [2, "5"]], "speeches": [[1, "1", "…"], [1, "2", "…"], [1, "3", "…"], [1, "4", "…"], [1, "5", "…"], [1, "7", "…"], [2, "1", "…"], [2, "2", "…"], [2, "5", "…"], [2, "7", "…"]]}, "spec": {"kind": "choice", "options": ["1", "2", "7", "nobody"], "fallback": "nobody"}, "before": {"phase": "night", "day": 3, "alive": ["1", "2", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5"], "speeches": 10}, "after": {"phase": "night", "day": 3, "alive": ["1", "7"], "acted": ["5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5", "d3:2"], "speeches": 10}, "log": [{"fn": "_kill", "seat": "2", "cause": "shot", "role": "villager", "before": {"phase": "night", "day": 3, "alive": ["1", "2", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5"], "speeches": 10}, "after": {"phase": "night", "day": 3, "alive": ["1", "7"], "acted": [], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5", "d3:2"], "speeches": 10}}, {"fn": "_settle", "before": {"phase": "night", "day": 3, "alive": ["1", "7"], "acted": ["5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5", "d3:2"], "speeches": 10}, "after": {"phase": "night", "day": 3, "alive": ["1", "7"], "acted": ["5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5", "d3:2"], "speeches": 10}}, {"fn": "_next", "state": {"phase": "night", "day": 3, "alive": ["1", "7"], "acted": ["5"], "kill_votes": {}, "seer_log": {"7": "wolf"}, "votes": {}, "pending": [], "deaths": ["d1:6", "d1:3", "d2:4", "d2:5", "d3:2"], "speeches": 10}, "ret": {"terminal": {"winner": "wolves", "day": 3}}}], "ret": {"terminal": {"winner": "wolves", "day": 3}}}], "outcome": {"winner": "wolves", "day": 3}};
+const ROLE = {wolf:"狼", seer:"预言家", hunter:"猎人", villager:"村民"};
+const K=w=>`<span class="k">${w}</span>`, S=w=>`<span class="s">${esc(w)}</span>`, F=w=>`<span class="f">${w}</span>`, CM=w=>`<span class="cm"># ${esc(w)}</span>`;
+function esc(x){return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+const q=v=>JSON.stringify(v);
+function fmt(v){ if(Array.isArray(v)) return "["+v.join(", ")+"]"; if(v&&typeof v==="object") return "{"+Object.entries(v).map(([k,x])=>k+":"+x).join(", ")+"}"; return String(v) }
+const VARS=["phase","day","alive","acted","kill_votes","seer_log","votes","pending","deaths","speeches"];
+const VN={phase:"_phase",day:"_day",alive:"_alive",acted:"_acted",kill_votes:"_kill_votes",seer_log:"_seer_log",votes:"_votes",pending:"_pending",deaths:"_deaths",speeches:"len(_speeches)"};
+function diff(a,b){ const out=[]; for(const v of VARS){ if(JSON.stringify(a?.[v])!==JSON.stringify(b[v])) out.push([v,a?.[v],b[v]]) } return out }
+function deltaBox(a,b,label){ const d=diff(a,b); if(!d.length) return `<div class="delta"><div class="lab">${label}</div><div>状态没变</div></div>`;
+  return `<div class="delta"><div class="lab">${label}</div>`+d.map(([v,x,y])=>`<div>${VN[v]}: ${a?`<span class="was">${esc(fmt(x))}</span>`:""}${esc(fmt(y))}</div>`).join("")+`</div>` }
+
+/* ─── function sources: each line {c: code html, n: note, child: fn name, ctx: child ctx, dim: bool} ─── */
+const SRC = {};
+
+SRC.run = R => {
+  const isReset = R.k===0;
+  const L=[];
+  L.push({c:`${K("def")} ${F("run")}(env, players, seed):`, n:`seed=${D.seed}`});
+  L.push({c:`    turn = env.reset(seed)`, child: isReset?"reset":null, n: isReset?"→ "+retS(D.reset.log.at(-1).ret):"(开局那圈)", dim:!isReset});
+  L.push({c:`    ${K("while")} isinstance(turn, Turn):`, n: isReset?"":`第 ${R.k} 圈,turn = Turn(${q(R.actor)}, ${q(R.task)})`, dim:isReset});
+  L.push({c:`        view = env.observe(turn.actor)`, child: isReset?null:"observe", n: isReset?"":"→ 视图(展开看)", dim:isReset});
+  L.push({c:`        spec = env.action_space(turn.actor, turn.task)`, child: isReset?null:"action_space", n: isReset?"":`→ choice ${fmt(R.spec.options)}`, dim:isReset});
+  L.push({c:`        action, forced = _elicit(players[turn.actor], view, turn.task, spec)`, child: isReset?null:"_elicit", n: isReset?"":`→ ${q(R.action)}, forced=False`, dim:isReset});
+  L.push({c:`        journal.append(Record(turn.actor, turn.task, action, forced))`, n: isReset?"":`Record(${q(R.actor)}, ${q(R.task)}, ${q(R.action)}, False)`, dim:isReset});
+  L.push({c:`        turn = env.step(turn.actor, turn.task, action)`, child: isReset?null:"step", n: isReset?"":"→ "+retS(R.ret), dim:isReset, mut:true});
+  L.push({c:`    ${K("return")} Episode(journal, outcome=turn.outcome)`, n: R.ret&&R.ret.terminal?`outcome=${fmt(R.ret.terminal)}`:"", dim:!(R.ret&&R.ret.terminal)});
+  return L;
+};
+function retS(r){ return r.terminal? `Terminal(${fmt(r.terminal)})` : `Turn(${q(r.actor)}, ${q(r.task)})` }
+
+SRC.reset = R => {
+  const st=D.reset.after; const roles=Object.entries(D.roles).map(([s,r])=>s+" "+ROLE[r]).join(", ");
+  return [
+    {c:`${K("def")} ${F("reset")}(self, seed):`},
+    {c:`    rng = random.Random(seed)`, n:`seed=${D.seed}`},
+    {c:`    roles = ROLES[:]; rng.shuffle(roles)`, n:"发牌"},
+    {c:`    self._roles = dict(zip(seats, roles))`, n:roles+"(私有,observe 不给)"},
+    {c:`    self._alive = set(seats); self._phase = ${S("night")}; self._day = 1`},
+    {c:`    self._acted = set(); self._kill_votes = {}; self._seer_log = {}`},
+    {c:`    self._speeches = []; self._votes = {}; self._pending = []; self._deaths = []`},
+    {c:`    ${K("return")} self._next()`, child:"_next", ctx:{log:D.reset.log.at(-1)}, n:"→ "+retS(D.reset.log.at(-1).ret)},
+  ];
+};
+
+SRC.observe = R => {
+  const v=R.view, role=D.roles[R.actor];
+  return [
+    {c:`${K("def")} ${F("observe")}(self, actor):`, n:`actor=${q(R.actor)},身份 ${ROLE[role]}`},
+    {c:`    role = self._roles[actor]`, n:q(role)},
+    {c:`    v = {`},
+    {c:`        ${S("you")}: actor, ${S("role")}: role,`, n:`${R.actor} / ${role}`},
+    {c:`        ${S("day")}: self._day, ${S("phase")}: self._phase,`, n:`${v.day} / ${v.phase}`},
+    {c:`        ${S("alive")}: sorted(self._alive),`, n:fmt(v.alive)},
+    {c:`        ${S("deaths")}: [(d, s) ...],`, n:v.deaths.length? v.deaths.map(x=>"d"+x[0]+":"+x[1]).join(", ") : "[]"+"  谁死,不说怎么死"},
+    {c:`        ${S("speeches")}: [...],`, n:`${v.speeches.length} 条`},
+    {c:`    }`},
+    {c:`    ${K("if")} role == ${S("wolf")}:`, dim:role!=="wolf", n:role==="wolf"?"是狼":"不是狼,跳过"},
+    {c:`        v[${S("pack")}] = 狼的座位`, dim:role!=="wolf", n:role==="wolf"?fmt(v.pack):""},
+    {c:`        v[${S("pack_kill_votes")}] = dict(self._kill_votes)`, dim:role!=="wolf", n:role==="wolf"?fmt(v.pack_kill_votes):""},
+    {c:`    ${K("if")} role == ${S("seer")}:`, dim:role!=="seer", n:role==="seer"?"是预言家":"不是预言家,跳过"},
+    {c:`        v[${S("seer_log")}] = dict(self._seer_log)`, dim:role!=="seer", n:role==="seer"?fmt(v.seer_log):""},
+    {c:`    ${K("return")} v`, n:"这个 dict 就是座位拿到的全部;没有的键 = 看不到", val:true},
+  ];
+};
+
+SRC.action_space = R => {
+  const t=R.task, o=fmt(R.spec.options);
+  const row=(task,code,note)=>({c:code, dim:t!==task, n:t===task?note:""});
+  return [
+    {c:`${K("def")} ${F("action_space")}(self, actor, task):`, n:`actor=${q(R.actor)}, task=${q(t)}`},
+    {c:`    alive = self._alive`},
+    row("wolf_kill", `    ${K("if")} task == ${S("wolf_kill")}:   ${K("return")} choice(alive - 狼)`, o+"  活人减去狼"),
+    row("seer_check",`    ${K("if")} task == ${S("seer_check")}:  ${K("return")} choice(alive - {actor} - 验过的)`, o+"  减自己减验过的"),
+    row("speak",     `    ${K("if")} task == ${S("speak")}:       ${K("return")} text(max_len=300)`, "自由文本"),
+    row("vote",      `    ${K("if")} task == ${S("vote")}:        ${K("return")} choice(alive - {actor})`, o+"  不能投自己"),
+    row("shoot",     `    ${K("if")} task == ${S("shoot")}:       ${K("return")} choice(alive + [${S("nobody")}])`, o),
+    {c:`    ${CM("这张单子既渲染进提示词,又是 step 的门;从 _alive 算,死人自动消失")}`},
+  ];
+};
+
+SRC._elicit = R => [
+  {c:`${K("def")} ${F("_elicit")}(player, view, task, spec, max_retries=3):`},
+  {c:`    feedback = None`, n:"第一次没有拒绝原因"},
+  {c:`    ${K("for")} _ ${K("in")} range(max_retries):`, n:"这圈只用了 1 次"},
+  {c:`        action = player.act(view, task, spec, feedback)`, child:"act", n:`→ ${q(R.action)}`},
+  {c:`        reason = spec.check(action)`, child:"check", n:"→ None"},
+  {c:`        ${K("if")} reason ${K("is")} None: ${K("return")} action, False`, n:"合法 → 返回,forced=False", val:true},
+  {c:`        feedback = reason`, dim:true, n:"(没走到)"},
+  {c:`    ${K("return")} spec.fallback, True`, dim:true, n:`(没走到;兜底会是 ${q(R.spec.fallback)})`},
+];
+
+SRC.act = R => [
+  {c:`${K("class")} ${F("RandomPlayer")}:   ${CM("这局坐的是随机脚本;LLM / 真人实现同一个签名")}`},
+  {c:`    ${K("def")} ${F("act")}(self, view, task, spec, feedback):`, n:"手里只有这四样,没有 env"},
+  {c:`        ${K("if")} spec.kind == ${S("choice")}:`, dim:R.spec.kind!=="choice"},
+  {c:`            ${K("return")} self._rng.choice(spec.options)`, dim:R.spec.kind!=="choice", n:R.spec.kind==="choice"?`从 ${fmt(R.spec.options)} 里随机 → ${q(R.action)}`:""},
+  {c:`        ${K("if")} spec.kind == ${S("text")}:`, dim:R.spec.kind!=="text"},
+  {c:`            ${K("return")} ${S("…")}`, dim:R.spec.kind!=="text", n:R.spec.kind==="text"?"发言用 … 代替":""},
+];
+
+SRC.check = R => [
+  {c:`${K("def")} ${F("check")}(self, action):   ${CM("ActionSpec 的方法")}`},
+  {c:`    ${K("if")} self.kind == ${S("choice")}:`, dim:R.spec.kind!=="choice"},
+  {c:`        ${K("if")} action ${K("not")} ${K("in")} self.options: ${K("return")} f"{action!r} is not one of ..."`, dim:R.spec.kind!=="choice", n:R.spec.kind==="choice"?`${q(R.action)} 在单子上`:""},
+  {c:`    ${K("if")} self.kind == ${S("text")}:`, dim:R.spec.kind!=="text"},
+  {c:`        ${K("if")} ${K("not")} action.strip(): ${K("return")} "expected non-empty text"`, dim:R.spec.kind!=="text", n:R.spec.kind==="text"?"非空":""},
+  {c:`    ${K("return")} None`, n:"合法", val:true},
+];
+
+SRC.step = R => {
+  const t=R.task, a=R.action;
+  const settle=R.log.find(e=>e.fn==="_settle"), nextE=R.log.find(e=>e.fn==="_next");
+  const shotKill = t==="shoot" && a!=="nobody" ? R.log.find(e=>e.fn==="_kill"&&e.cause==="shot") : null;
+  const br=(task,code,note,extra={})=>({c:code, dim:t!==task, n:t===task?note:"", ...(t===task?extra:{})});
+  return [
+    {c:`${K("def")} ${F("step")}(self, actor, task, action):`, n:`(${q(R.actor)}, ${q(t)}, ${q(a)})`},
+    {c:`    spec = self.action_space(actor, task)`, n:"门:再算一次单子"},
+    {c:`    ${K("if")} spec.check(action): ${K("raise")} RuntimeError(...)`, n:"通过(驱动循环已查过,这里防绕过)"},
+    br("wolf_kill", `    ${K("if")} task == ${S("wolf_kill")}:    self._kill_votes[actor] = action`, `狼票 ${R.actor}→${a}`),
+    br("seer_check",`    ${K("elif")} task == ${S("seer_check")}: self._seer_log[action] = self._roles[action]`, `验出 ${a} 是 ${ROLE[D.roles[a]]||""}`),
+    br("speak",     `    ${K("elif")} task == ${S("speak")}:      self._speeches.append((day, actor, action))`, "记一条发言"),
+    br("vote",      `    ${K("elif")} task == ${S("vote")}:       self._votes[actor] = action`, `记票 ${R.actor}→${a}`),
+    br("shoot",     `    ${K("elif")} task == ${S("shoot")}:      ${K("if")} action != ${S("nobody")}: self._kill(action, ${S("shot")})`, a!=="nobody"?`带走 ${a} → 走漏斗`:"nobody,什么都不做", shotKill?{child:"_kill", ctx:{log:shotKill}}:{}),
+    {c:`    self._acted.add(actor)`, n:`acted += ${R.actor}`},
+    {c:`    self._settle()`, child:"_settle", ctx:{log:settle}, n: diff(settle.before,settle.after).length?"收齐 → 结算了":"未收齐,什么都不做", mut:true},
+    {c:`    ${K("return")} self._next()`, child:"_next", ctx:{log:nextE}, n:"→ "+retS(nextE.ret)},
+  ];
+};
+
+SRC._settle = (R, ctx) => {
+  const e=ctx.log, b=e.before, a=e.after; const changed=diff(b,a).length>0;
+  const nightTaken = changed && b.phase==="night", dayTaken = changed && b.phase==="day";
+  const kill = R.log.find(x=>x.fn==="_kill" && x.cause!=="shot");
+  return [
+    {c:`${K("def")} ${F("_settle")}(self):`},
+    {c:`    ${K("if")} self._phase == ${S("night")} ${K("and")} 夜间行动者 ⊆ self._acted:`, dim:!nightTaken, n: b.phase==="night"? (nightTaken?"夜里该行动的都行动了":"还有人没行动"):"不是夜晚"},
+    {c:`        target = Counter(self._kill_votes).most_common(1)[0][0]`, dim:!nightTaken, n:nightTaken?`票 ${fmt(b.kill_votes)} → ${kill.seat}`:""},
+    {c:`        self._kill(target, cause=${S("wolf")})`, dim:!nightTaken, child:nightTaken?"_kill":null, ctx:{log:kill}, n:nightTaken?"走漏斗":"", mut:true},
+    {c:`        self._kill_votes.clear(); self._phase = ${S("day")}; self._acted = set()`, dim:!nightTaken, n:nightTaken?"进白天":""},
+    {c:`    ${K("elif")} self._phase == ${S("day")} ${K("and")} self._votes.keys() >= self._alive:`, dim:!dayTaken, n: b.phase==="day"? (dayTaken?"活人都投了":"还有人没投"):"不是白天"},
+    {c:`        top, n = Counter(self._votes).most_common()[0]`, dim:!dayTaken, n:dayTaken?`票 ${fmt(b.votes)}`:""},
+    {c:`        ${K("if")} 没有并列: self._kill(top, cause=${S("exile")})`, dim:!dayTaken, child:(dayTaken&&kill)?"_kill":null, ctx:{log:kill}, n:dayTaken?(kill?`→ ${kill.seat} 被放逐,走漏斗`:"平票,无人出局"):"", mut:true},
+    {c:`        self._votes.clear(); self._phase = ${S("night")}; self._acted = set(); self._day += 1`, dim:!dayTaken, n:dayTaken?`进夜晚,第 ${a.day} 天`:""},
+  ];
+};
+
+SRC._kill = (R, ctx) => {
+  const e=ctx.log; const hunter=e.role==="hunter";
+  return [
+    {c:`${K("def")} ${F("_kill")}(self, seat, cause):   ${CM("漏斗:所有死法只有这一个入口")}`, n:`seat=${q(e.seat)}, cause=${q(e.cause)}`},
+    {c:`    ${K("if")} seat ${K("not")} ${K("in")} self._alive: ${K("return")}`, n:"活着,继续"},
+    {c:`    self._alive.discard(seat)`, n:`${e.seat} 出局`},
+    {c:`    self._deaths.append((self._day, seat))`, n:`d${e.after.day}:${e.seat}`},
+    {c:`    ${K("if")} self._roles[seat] == ${S("hunter")}:`, dim:!hunter, n:`${e.seat} 是${ROLE[e.role]}`+(hunter?"":",不触发")},
+    {c:`        self._pending.append(seat)`, dim:!hunter, n:hunter?"排一个待开枪 → _next 会先让他开枪":""},
+  ];
+};
+
+SRC._next = (R, ctx) => {
+  const e=ctx.log, st=e.state, r=e.ret;
+  const wolves=st.alive.filter(s=>D.roles[s]==="wolf").length, good=st.alive.length-wolves;
+  const term=!!r.terminal, pend=!term && st.pending.length>0;
+  const night=st.phase==="night", day=st.phase==="day";
+  const phaseTaken=!term&&!pend;
+  return [
+    {c:`${K("def")} ${F("_next")}(self):   ${CM("只看现在的状态,不看从哪来")}`},
+    {c:`    wolves = 活着的狼`, n:`${wolves} 狼 vs ${good} 好人`},
+    {c:`    ${K("if")} ${K("not")} wolves:               ${K("return")} Terminal(village)`, dim:!(term&&r.terminal.winner==="village"), n:wolves?"狼还在":"→ 村民胜"},
+    {c:`    ${K("if")} len(wolves) >= len(好人):   ${K("return")} Terminal(wolves)`, dim:!(term&&r.terminal.winner==="wolves"), n:(term&&r.terminal.winner==="wolves")?"→ 狼胜,结束":"不成立"},
+    {c:`    ${K("if")} self._pending:              ${K("return")} Turn(self._pending.pop(0), ${S("shoot")})`, dim:!pend, n:pend?`队列 ${fmt(st.pending)} → 先让 ${r.actor} 开枪(插队)`:"队列空"},
+    {c:`    ${K("if")} self._phase == ${S("night")}:`, dim:!(phaseTaken&&night), n:phaseTaken?(night?"夜晚":"不是夜晚"):""},
+    {c:`        ${K("for")} s ${K("in")} order: ${K("if")} s 活着且没行动且是狼/预言家: ${K("return")} Turn(s, ...)`, dim:!(phaseTaken&&night), n:(phaseTaken&&night)?`→ ${retS(r)}`:""},
+    {c:`    ${K("else")}:`, dim:!(phaseTaken&&day)},
+    {c:`        ${K("for")} s ${K("in")} order: ${K("if")} s 活着且今天没发言: ${K("return")} Turn(s, ${S("speak")})`, dim:!(phaseTaken&&day&&r.task==="speak"), n:(phaseTaken&&day&&r.task==="speak")?`→ ${retS(r)}`:""},
+    {c:`        ${K("for")} s ${K("in")} order: ${K("if")} s 活着且没投票: ${K("return")} Turn(s, ${S("vote")})`, dim:!(phaseTaken&&day&&r.task==="vote"), n:(phaseTaken&&day&&r.task==="vote")?`→ ${retS(r)}`:""},
+  ];
+};
+
+/* mutating functions get a delta box: which state they changed */
+function deltaFor(name, R, ctx){
+  if(name==="step") return deltaBox(R.before, R.after, "step 整体改了");
+  if(name==="_settle") return deltaBox(ctx.log.before, ctx.log.after, "_settle 改了");
+  if(name==="_kill") return deltaBox(ctx.log.before, ctx.log.after, "_kill 改了");
+  if(name==="reset") return deltaBox(null, D.reset.after, "reset 造出的初始状态");
+  return "";
+}
+
+/* ─── render ─── */
+let cur = 0; const open = new Set();
+function renderFn(name, R, ctx, path){
+  const lines = SRC[name](R, ctx||{});
+  let h=`<div class="fn"><div class="hd"><b>${name}()</b><span>${path.replace(/>/g," › ")}</span></div>`;
+  lines.forEach((l,i)=>{
+    const id=path+">"+name+"#"+i; const has=!!l.child; const isOpen=open.has(id);
+    h+=`<div class="ln${l.dim?" dim":""}${has?" callable":""}" data-id="${esc(id)}" data-child="${l.child||""}" data-i="${i}"><span class="tg">${has?(isOpen?"▾":"▸"):""}</span><span class="c">${l.c}</span><span class="note${l.val?" val":""}">${l.n?esc(l.n):""}</span></div>`;
+    if(has&&isOpen){ h+=`<div class="nest">${renderFn(l.child, R, l.ctx||ctx, path+">"+name)}</div>`; }
+  });
+  h+=`</div>`;
+  h+=deltaFor(name, R, ctx||{});
+  return h;
+}
+function getR(k){ if(k===0) return {k:0, ret:D.reset.log.at(-1).ret, before:null, after:D.reset.after, log:[], view:{}, spec:{options:[]}, actor:"", task:"", action:""}; return D.rounds[k-1]; }
+function draw(){
+  const R=getR(cur);
+  const crumb = cur===0? `#0 开局 · run() 调 reset()` : `#${cur} · turn = Turn(${q(R.actor)}, ${q(R.task)}) · ${R.actor} 号是${ROLE[D.roles[R.actor]]}`;
+  document.getElementById("code").innerHTML = `<div class="crumb">${esc(crumb)}</div>`+renderFn("run", R, {}, "");
+  const st=document.getElementById("state");
+  const b=R.before, a=R.after;
+  let rows=VARS.map(v=>{const ch=b?JSON.stringify(b[v])!==JSON.stringify(a[v]):true; return `<tr class="${ch?"chg":""}"><td class="vn">${VN[v]}</td><td>${ch&&b?`<span class="was">${esc(fmt(b[v]))}</span>`:""}${esc(fmt(a[v]))}</td></tr>`}).join("");
+  st.innerHTML=`<h2>这一圈之后的状态</h2><table class="vars">${rows}</table>
+    <h2 style="margin-top:14px">返回</h2><div class="rt"><code>${esc(retS(R.ret))}</code></div>
+    <h2 style="margin-top:14px">发牌(只有环境知道)</h2><div class="rt">${Object.entries(D.roles).map(([s,r])=>s+" "+ROLE[r]).join(" · ")}</div>`;
+  document.querySelectorAll("#rounds .r").forEach(el=>el.classList.toggle("on", +el.dataset.k===cur));
+}
+document.getElementById("code").addEventListener("click", ev=>{
+  const ln=ev.target.closest(".ln.callable"); if(!ln) return;
+  const id=ln.dataset.id; if(open.has(id)) open.delete(id); else open.add(id); draw();
+});
+(function(){
+  const nav=document.getElementById("rounds"); let h="";
+  h+=`<div class="r" data-k="0" tabindex="0"><span class="n">#0</span>reset</div>`;
+  D.rounds.forEach(r=>{ const mark=r.log.some(e=>e.fn==="_kill")||r.ret.terminal; h+=`<div class="r${mark?" mark":""}" data-k="${r.k}" tabindex="0"><span class="n">#${r.k}</span>${r.actor} ${r.task}${r.ret.terminal?" ■":""}</div>`; });
+  nav.innerHTML=h;
+  nav.addEventListener("click", ev=>{const el=ev.target.closest(".r"); if(!el) return; cur=+el.dataset.k; open.clear(); draw();});
+  nav.addEventListener("keydown", ev=>{ if(ev.key==="Enter"||ev.key===" "){const el=ev.target.closest(".r"); if(el){cur=+el.dataset.k; open.clear(); draw(); ev.preventDefault();}}});
+  // open round 1 with step expanded so the page shows something at rest
+  cur=1; open.add(">run#7"); draw();
+})();
+</script>
+
+
+<div class="app app2 off" id="app2">
+  <nav class="rounds pane" id="rounds2"></nav>
+  <main class="code pane" id="code2"></main>
+  <aside class="state pane" id="state2"></aside>
+</div>
+<script>
+(function(){
+/* ─── 真实记录：g1_12p_dynamic_seed202，10 号守卫（claude-sonnet-5），第 4 夜。昨晚守了 5 号。 ─── */
+const K=w=>`<span class="k">${w}</span>`, S=w=>`<span class="s">${esc(w)}</span>`, F=w=>`<span class="f">${w}</span>`, CM=w=>`<span class="cm"># ${esc(w)}</span>`;
+function esc(x){return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+const CHOICES=[2,4,9,10];
+const ERR="night_protect.target_id=5 is not one of [2, 4, 9, 10]";
+const OBS_DEATHS="round 1: player 7 died (exiled by vote); round 2: player 12 died (killed at night); round 2: player 8 died (shot); round 2: player 1 died (exiled by vote); round 3: player 11 died (killed at night); round 3: player 3 died (killed at night); round 3: player 6 died (exiled by vote)";
+const OBS_ABIL="you are the guard. you protect one player each night; never the same seat twice running.";
+const T1="Protecting 5 tonight. I protected 4 last night so cannot repeat. 5 is confirmed gold water and a key villager.";
+const T2="5 must be dead - I need to check the deaths to see what happened and who is actually alive.";
+const T3="The alive list shows [2, 4, 9, 10] but earlier said [2, 4, 5, 9, 10]. Let me check if 5 just died tonight.";
+const T4="Wait, I protected 4 last night so I cannot protect 4 again. I must protect either 2, 9, or myself (10). ... I'll protect myself.";
+
+/* 对话历史：每一步之后 messages 长什么样。role/content，new=这一步新增 */
+const M0=[{r:"system",c:"规则文本 + 10 号的视图（活人 [2,4,5,9,10]，昨晚守的是 5）"},{r:"user",c:"轮到你了：night_protect。可用工具见 schema。"}];
+const M1=M0.concat([{r:"assistant",c:"night_protect(target_id=5, thought=\""+T1+"\")",n:1},{r:"tool",c:"[guard] "+ERR,n:1}]);
+const M2=M1.concat([{r:"assistant",c:"query_deaths()",n:1},{r:"tool",c:OBS_DEATHS,n:1}]);
+const M3=M2.concat([{r:"assistant",c:"check_ability()",n:1},{r:"tool",c:OBS_ABIL,n:1}]);
+const M4=M3.concat([{r:"assistant",c:"night_protect(target_id=4, thought=\""+T4+"\")",n:1}]);
+
+const STEPS=[
+ {k:0,label:"进入 act",sub:"run → observe → action_space → act",msgs:M0,crumb:"#0 · turn = Turn(10, \"night_protect\") · 10 号是守卫 · 昨晚守了 5 号"},
+ {k:1,label:"第 1 步",sub:"night_protect(5) → 不收",msgs:M1,mark:true,crumb:"#1 · 模型回 night_protect(5) · check 不收 · 报错写进对话"},
+ {k:2,label:"第 2 步",sub:"query_deaths()",msgs:M2,crumb:"#2 · 模型改调查询工具 query_deaths · 执行，结果写进对话"},
+ {k:3,label:"第 3 步",sub:"check_ability()",msgs:M3,crumb:"#3 · 模型再调 check_ability · 执行，结果写进对话"},
+ {k:4,label:"第 4 步",sub:"night_protect(4) → 收",msgs:M4,mark:true,crumb:"#4 · 模型回 night_protect(4) · check 收 · act 返回"},
+ {k:5,label:"回到驱动层",sub:"spec.check → step → journal",msgs:M4,crumb:"#5 · 驱动层用同一个 spec 再查一遍 · step 写进世界"},
+];
+
+const SRC={};
+SRC.run = R => {
+  const k=R.k, inAct = k>=1 && k<=4;
+  return [
+    {c:`${K("public")} Episode ${F("run")}(Environment env, Map<Integer, Player> players, ${K("int")} seed) {`},
+    {c:`    ${K("while")} (turn ${K("instanceof")} Turn) {`, n:`turn = new Turn(10, "night_protect")`},
+    {c:`        View view = env.${F("observe")}(turn.actor);`, child:"observe", n:k===0?"→ 视图(展开看)":"", dim:k!==0},
+    {c:`        ActionSpec spec = env.${F("actionSpace")}(turn.actor, turn.task);`, child:"action_space", n:k===0?`→ targetId ∈ ${JSON.stringify(CHOICES)}`:"", dim:k!==0},
+    {c:`        Elicited e = ${F("elicit")}(players.get(turn.actor), view, turn.task, spec);`, child:"_elicit", n:inAct?`第 ${k} 步在里面`:(k===5?"→ action={night_protect, targetId:4}, forced=false":""), dim:k===0},
+    {c:`        Applied a = ledger.${F("apply")}(env, turn, e.action, e.forced);`, child:"apply", n:k===5?"账本：幂等键 + journal，里面才调 env.step":"", dim:k!==5},
+    {c:`        journal.add(a.record);  turn = a.next;`, n:k===5?"Record(10, \"night_protect\", {targetId:4}, false)；turn = 下一个该谁":"", dim:k!==5},
+    {c:`    }`},
+    {c:`}`},
+  ];
+};
+SRC.observe = R => [
+  {c:`${K("public")} View ${F("observe")}(${K("int")} actor) {`, n:"actor=10"},
+  {c:`    View v = ${K("new")} View();`},
+  {c:`    v.you = 10;  v.role = ${S("guard")};  v.round = 4;  v.phase = ${S("night")};`},
+  {c:`    v.publicInfo.alive = Arrays.asList(2, 4, 5, 9, 10);`, n:"5 号此刻还活着"},
+  {c:`    v.privateInfo.put(${S("last_guarded")}, 5);`, n:"昨晚守的是 5 —— 这是事实"},
+  {c:`    ${K("return")} v;`, n:"模型拿到的就是这个对象；没有 env 的引用", val:true},
+  {c:`}`},
+];
+SRC.action_space = R => [
+  {c:`${K("public")} ActionSpec ${F("actionSpace")}(${K("int")} actor, String task) {`, n:"actor=10, task=\"night_protect\""},
+  {c:`    List<Integer> targets = ${K("new")} ArrayList<Integer>(alive);`},
+  {c:`    targets.remove(lastGuarded.get(actor));`, n:"[2,4,5,9,10] − {5} = [2,4,9,10]"},
+  {c:`    Param target = ${K("new")} Param(${S("int")}, /*choices*/ targets);`},
+  {c:`    ToolSpec protect = ${K("new")} ToolSpec(${S("night_protect")}, target, THOUGHT);`},
+  {c:`    ${K("return")} ${K("new")} ActionSpec(protect);`, n:"这份清单既进 schema 又做校验", val:true},
+  {c:`    ${CM("规则「不能连守同一人」只写在这里；check 只查在不在清单里")}`},
+  {c:`}`},
+];
+SRC._elicit = R => [
+  {c:`${K("static")} Elicited ${F("elicit")}(Player player, View view, String task, ActionSpec spec) {`},
+  {c:`    String feedback = ${K("null")};`},
+  {c:`    ${K("for")} (${K("int")} i = 0; i < MAX_RETRIES; i++) {`, n:"驱动层这一圈只用了 1 次"},
+  {c:`        Action action = player.${F("act")}(view, task, spec, feedback);`, child:"act", n:R.k>=1&&R.k<=4?"→ 进入 LLMPlayer 的 ReAct 循环":(R.k===5?"→ {night_protect, targetId:4}":"")},
+  {c:`        String reason = spec.${F("check")}(action);`, child:"check_outer", n:R.k===5?"→ null（同一个 spec 再查一遍）":"", dim:R.k!==5},
+  {c:`        ${K("if")} (reason == ${K("null")}) ${K("return")} ${K("new")} Elicited(action, ${K("false")});`, n:R.k===5?"合法，forced=false":"", dim:R.k!==5, val:R.k===5},
+  {c:`        feedback = reason;`, dim:true, n:"(没走到)"},
+  {c:`    }`},
+  {c:`    ${K("return")} ${K("new")} Elicited(spec.fallback, ${K("true")});`, dim:true, n:"(没走到；三次都不合法才到这)"},
+  {c:`}`},
+];
+SRC.act = R => {
+  const k=R.k;
+  const on=(s)=>k===s;
+  const L=[
+    {c:`${K("public")} Action ${F("act")}(View view, String task, ActionSpec spec, String feedback) {   ${CM("LLMPlayer")}`},
+    {c:`    List<Message> messages = ${K("new")} ArrayList<Message>();`, n:on(0)?"右边是此刻的对话":"", dim:!on(0)},
+    {c:`    messages.add(system(rules + view));  messages.add(user(${S("轮到你了")}));`, dim:!on(0)},
+    {c:`    ${CM("模型手里有两种工具：")}`},
+    {c:`    ${CM("  查询工具（query_deaths / query_votes / check_ability …）—— 只是看看，不结束回合，可以连调好几次")}`},
+    {c:`    ${CM("  终结动作（night_protect / vote / speak …）—— 来自 spec，调了这回合就结束")}`},
+    {c:`    List<Schema> schemas = spec.openaiSchemas();`, n:on(0)?"终结动作的 schema，enum: [2,4,9,10] —— 模型看到的清单":"", dim:!on(0)},
+    {c:`    schemas.addAll(queryTools.schemas());`, n:on(0)?"再加上查询工具的 schema，一起给模型":"", dim:!on(0)},
+    {c:`    ${K("for")} (${K("int")} step = 1; step <= MAX_REACT_STEPS; step++) {`, n:k>=1&&k<=4?`第 ${k} 步（最多 8 步）`:"", dim:on(0)||on(5)},
+  ];
+  L.push({c:`        Response response = ${F("callModel")}(messages, schemas);`, child:"call_model", n:on(1)?"→ night_protect(targetId=5, …)  ← 模型记错了昨晚守谁":on(2)?"→ query_deaths()":on(3)?"→ check_ability()":on(4)?"→ night_protect(targetId=4, …)":"", dim:on(0)||on(5)});
+  L.push({c:`        ToolCall call = response.toolCalls.get(0);`, n:k>=1&&k<=4?"模型这次说「我要调 "+(on(1)?"night_protect":on(2)?"query_deaths":on(3)?"check_ability":"night_protect")+"」":"", dim:on(0)||on(5)});
+  L.push({c:`        ${CM("先分流：模型调的是查询工具，还是终结动作？")}`, dim:on(0)||on(5)});
+  L.push({c:`        ${K("if")} (queryTools.contains(call.name)) {`, n:on(2)||on(3)?"是查询工具 → 执行它，把结果给模型，回合继续":on(1)||on(4)?"不是查询工具，往下走":"", dim:!(on(1)||on(2)||on(3)||on(4))});
+  L.push({c:`            String obs = runQuery(call);`, n:on(2)?"→ 死亡记录（没有 5 号）":on(3)?"→ 守卫规则一句话":"", dim:!(on(2)||on(3))});
+  L.push({c:`            ${F("appendTurn")}(messages, call, obs);  ${K("continue")};`, child:"_append_turn", n:on(2)||on(3)?"结果写进对话，再转一圈问模型":"", dim:!(on(2)||on(3))});
+  L.push({c:`        }`, dim:!(on(2)||on(3))});
+  L.push({c:`        ${CM("走到这里说明模型给的是终结动作，要过两道校验")}`, dim:!(on(1)||on(4))});
+  L.push({c:`        ToolSpec term = spec.tool(call.name);`, n:on(1)||on(4)?"从清单里取出 night_protect 的定义":"", dim:!(on(1)||on(4))});
+  L.push({c:`        String reason = term.${F("check")}(call.arguments);`, child:"check", n:on(1)?`第一道：合不合规则 → "${ERR}"`:on(4)?"第一道：合不合规则 → null（合法）":"", dim:!(on(1)||on(4))});
+  L.push({c:`        Block blocked = (reason != ${K("null")}) ? ${K("null")} : ${F("guardTerminal")}(call, view, task);`, child:"_guard_terminal", n:on(4)?"第二道：说的和做的一不一致 → null（过）":on(1)?"(第一道没过，第二道不查)":"", dim:!on(4)});
+  L.push({c:`        ${K("if")} (reason != ${K("null")} || blocked != ${K("null")}) {`, n:on(1)?"不收":"", dim:!on(1)});
+  L.push({c:`            String why = (reason != ${K("null")}) ? reason : blocked.reason;`, dim:!on(1)});
+  L.push({c:`            ${F("appendTurn")}(messages, call, "[guard] " + why);`, child:"_append_turn", n:on(1)?"报错写进对话":"", dim:!on(1)});
+  L.push({c:`            ${K("continue")};`, n:on(1)?"回到循环顶部，再问一次":"", dim:!on(1)});
+  L.push({c:`        }`, dim:!on(1)});
+  L.push({c:`        ${K("return")} ${K("new")} Action(call.name, term.normalise(call.arguments));`, n:on(4)?"→ {night_protect, targetId:4}  act 结束":"", dim:!on(4), val:on(4)});
+  L.push({c:`    }`, dim:true});
+  L.push({c:`    ${K("return")} forceTerminal(messages, spec);`, dim:true, n:"(没走到；8 步用完才到这)"});
+  L.push({c:`}`});
+  return L;
+};
+SRC.call_model = R => [
+  {c:`Response ${F("callModel")}(List<Message> messages, List<Schema> tools) {`},
+  {c:`    ${K("long")} delay = policy.backoffMs;`},
+  {c:`    ${K("for")} (${K("int")} attempt = 0; attempt <= policy.maxTransportRetries; attempt++) {`},
+  {c:`        ${K("try")} {`},
+  {c:`            ${K("return")} withDeadline(client, messages, tools, 50_000);`, n:"硬截止 50 秒；这次一次成功", val:true},
+  {c:`        } ${K("catch")} (ProviderError e) {`, dim:true},
+  {c:`            ${K("if")} (isTerminalRefusal(e)) { ...复核一次; ${K("throw new")} GatewayExhausted(e); }`, dim:true, n:"(没钱/密钥错：整局停)"},
+  {c:`            ${K("if")} (RETRYABLE.contains(e.status)) { sleep(delay); delay *= 2; }`, dim:true, n:"(网络抽风：退避重试)"},
+  {c:`        }`, dim:true},
+  {c:`    }`, dim:true},
+  {c:`    ${K("return")} ${K("null")};`, dim:true, n:"(都失败：这回合兜底并标 transport_failure)"},
+  {c:`}`},
+];
+SRC.check = R => {
+  const bad=R.k===1;
+  return [
+    {c:`${K("public")} String ${F("check")}(Map<String, Object> args) {   ${CM("ToolSpec 的方法，通用，不含游戏规则")}`},
+    {c:`    ${K("for")} (String key : args.keySet()) {`},
+    {c:`        ${K("if")} (!params.containsKey(key)) ${K("return")} name + " does not take argument " + key;`, dim:true, n:"无多余参数"},
+    {c:`    }`},
+    {c:`    ${K("for")} (Map.Entry<String, Param> e : params.entrySet()) {`},
+    {c:`        Param p = e.getValue();  Object v = args.get(e.getKey());`},
+    {c:`        ${K("if")} (p.required && v == ${K("null")}) ${K("return")} name + ": missing argument " + e.getKey();`, dim:true},
+    {c:`        ${K("if")} (p.type.equals(${S("int")}) && !(v ${K("instanceof")} Integer)) ${K("return")} name + "." + e.getKey() + " must be an integer";`, dim:true},
+    {c:`        ${K("if")} (p.choices != ${K("null")} && !p.choices.contains(v)) {`, n:bad?"5 不在 [2,4,9,10]":"4 在 [2,4,9,10]"},
+    {c:`            ${K("return")} name + "." + e.getKey() + "=" + v + " is not one of " + p.choices;`, n:bad?"→ 这句话就是报错；清单直接打印 p.choices":"", dim:!bad, val:bad},
+    {c:`        }`},
+    {c:`    }`},
+    {c:`    ${K("return")} ${K("null")};`, n:bad?"":"→ 合法", dim:bad, val:!bad},
+    {c:`}`},
+  ];
+};
+SRC.check_outer = R => SRC.check({k:5});
+SRC._guard_terminal = R => [
+  {c:`Block ${F("guardTerminal")}(ToolCall call, View view, String task) {`},
+  {c:`    Verdict verdict = guard.verifyTerminal(call.name, call.arguments, ownSpeechThisRound, injectedDirectives);`, n:"发言与动作是否一致、是否照搬了注入的指令"},
+  {c:`    ${K("return")} verdict.blocked ? ${K("new")} Block(verdict.check, verdict.reason) : ${K("null")};`, n:"夜间动作没有发言可比 → null", val:true},
+  {c:`}`},
+];
+SRC._append_turn = R => [
+  {c:`${K("void")} ${F("appendTurn")}(List<Message> messages, ToolCall call, String observation) {`},
+  {c:`    ${K("if")} (client.toolMode.equals(${S("native")})) {`, n:"claude 走原生 function-calling"},
+  {c:`        messages.add(Message.assistantToolCall(call));`, n:"先放模型自己的那次调用"},
+  {c:`        messages.add(Message.toolResult(call.id, observation));`, n:"再放系统的回应 → 右边对话多了两条", val:true},
+  {c:`    } ${K("else")} {`, dim:true},
+  {c:`        messages.add(Message.assistant(call.rawJson));`, dim:true, n:"(JSON 兜底路径，格式不同内容一样)"},
+  {c:`        messages.add(Message.user("OBSERVATION: " + observation));`, dim:true},
+  {c:`    }`, dim:true},
+  {c:`}`},
+];
+SRC.apply = R => [
+  {c:`Applied ${F("apply")}(Environment env, Turn turn, Action action, ${K("boolean")} forced) {   ${CM("StepLedger：每个 step 都从这里过")}`},
+  {c:`    String k = game + ":" + seq + ":" + turn.actor + ":" + turn.task;`, n:"\"g1:…:10:night_protect\""},
+  {c:`    ${K("if")} (done.containsKey(k)) { replays++; ${K("return")} done.get(k); }`, dim:true, n:"(重复到达才走这里，见「幂等」tab)"},
+  {c:`    Record record = ${K("new")} Record(turn.actor, turn.task, action, forced);`},
+  {c:`    Turn next = env.${F("step")}(turn.actor, turn.task, action);`, child:"step", n:"→ 下一个该谁"},
+  {c:`    done.put(k, ${K("new")} Applied(record, next));  seq++;`, n:"记账"},
+  {c:`    ${K("return")} done.get(k);`, val:true},
+  {c:`}`},
+];
+SRC.step = R => [
+  {c:`${K("public")} Turn ${F("step")}(${K("int")} actor, String task, Action action) {`, n:"唯一能改世界的地方"},
+  {c:`    ActionSpec spec = actionSpace(actor, task);  String reason = spec.check(action);`, n:"→ null，第三次查，还是那份清单"},
+  {c:`    guardTarget.put(4, actor);  lastGuarded.put(actor, 4);`, n:"守 4 号；明晚清单会减掉 4"},
+  {c:`    ${K("return")} next();`, n:"→ 下一个该谁", val:true},
+  {c:`}`},
+];
+const TYPE_NAMES=["Environment","Player","Turn","Terminal","Record","Elicited","View","ActionSpec","ToolSpec","Param","Action","Message","Schema","Response","ToolCall","Verdict","Block","StepLedger","Applied"];
+const TYPE_RE=new RegExp("(^|[^\\w\\-\"'/])("+TYPE_NAMES.join("|")+")(?![\\w\"])","g");
+function linkTypes(html){ return html.replace(TYPE_RE,(m,pre,t)=>`${pre}<span class="ty" data-ty="${t}">${t}</span>`); }
+let cur=0; const open=new Set();
+function renderFn(name, R, path){
+  const lines=SRC[name](R);
+  let h=`<div class="fn"><div class="hd"><b>${({run:"run",observe:"observe",action_space:"actionSpace",_elicit:"elicit",act:"act",call_model:"callModel",check:"check",check_outer:"check",_guard_terminal:"guardTerminal",_append_turn:"appendTurn",apply:"apply",step:"step"})[name]}()</b><span>${path.replace(/>/g," › ")}</span></div>`;
+  lines.forEach((l,i)=>{
+    const id=path+">"+name+"#"+i, has=!!l.child, isOpen=open.has(id);
+    h+=`<div class="ln${l.dim?" dim":""}${has?" callable":""}" data-id="${esc(id)}"><span class="tg">${has?(isOpen?"▾":"▸"):""}</span><span class="c">${linkTypes(l.c)}</span><span class="note${l.val?" val":""}">${l.n?esc(l.n):""}</span></div>`;
+    if(has&&isOpen) h+=`<div class="nest">${renderFn(l.child, R, path+">"+name)}</div>`;
+  });
+  return h+`</div>`;
+}
+function draw(){
+  const R=STEPS[cur];
+  document.getElementById("code2").innerHTML=`<div class="crumb">${esc(R.crumb)}</div>`+renderFn("run",R,"");
+  const prev = cur>0 ? STEPS[cur-1].msgs.length : 0;
+  const rows=R.msgs.map((m,i)=>`<tr class="${i>=prev&&cur>0&&cur<5?"chg":""}"><td class="vn">${m.r}</td><td>${esc(m.c)}</td></tr>`).join("");
+  const TYPES=[
+   {g:"两边的接口", items:[
+    {t:"Environment", d:"环境。持有世界状态，只有 step 能改", f:[
+      ["reset(seed)","发牌，返回第一个 Turn"],["observe(actor)","→ View，这个座位能看到的世界"],
+      ["actionSpace(actor, task)","→ ActionSpec，这个座位现在能做什么"],["step(actor, task, action)","唯一写入口，→ 下一个 Turn"],["rulesText()","给模型看的规则"]]},
+    {t:"Player", d:"玩家。LLM、真人、随机脚本各实现一份", f:[
+      ["act(view, task, spec, feedback)","→ Action。参数里没有 Environment"]]},
+   ]},
+   {g:"调度", items:[
+    {t:"Turn", d:"下一个该谁做什么", f:[["int actor","座位号"],["String task","\"vote\" / \"night_protect\" …"]]},
+    {t:"Terminal", d:"结束了。step 返回 Turn 或 Terminal", f:[["Outcome outcome","谁赢了"]]},
+    {t:"Record", d:"日志的一行", f:[["int actor",""],["String task",""],["Action action",""],["boolean forced","true = 兜底，不是模型选的"],["String model",""]]},
+    {t:"Elicited", d:"elicit 的返回", f:[["Action action",""],["boolean forced",""]]},
+    {t:"StepLedger", d:"账本，套在 step 外面：幂等键 + journal", f:[["String game",""],["int seq","每 step 一次加一"],["Map<String,Applied> done","键 → 第一次的结果"],["int replays","重复到达次数"]]},
+    {t:"Applied", d:"apply 的返回", f:[["Record record","日志的那一行"],["Turn next","下一步该谁"]]},
+   ]},
+   {g:"视图与清单", items:[
+    {t:"View", d:"observe 造出的、裁剪后的世界", f:[
+      ["int you",""],["String role",""],["int round",""],["String phase",""],
+      ["PublicInfo publicInfo","alive / dead / speeches / votes … 人人一样"],
+      ["Map privateInfo","因角色而异：狼有 fellow_wolves，守卫有 last_guarded"]]},
+    {t:"ActionSpec", d:"这回合能做的终结动作清单", f:[["List<ToolSpec> tools",""],["Action fallback","兜底动作"]]},
+    {t:"ToolSpec", d:"一个动作的定义", f:[
+      ["String name",""],["String description",""],["Map<String,Param> params","参数表"],
+      ["check(args)","→ 理由字符串，或 null"],["normalise(args)","\"5\" → 5，填默认值"],["openaiSchema()","→ Schema"]]},
+    {t:"Param", d:"一个参数的定义", f:[
+      ["String type","int / str / list …"],["boolean required",""],
+      ["List choices","合法值清单；环境按状态算出；enum 和 check 都读它"],["int maxLen","文本上限"]]},
+   ]},
+   {g:"模型侧", items:[
+    {t:"Action", d:"模型最终选的动作", f:[["String name",""],["Map args",""]]},
+    {t:"Message", d:"对话历史的一条", f:[["String role","system / user / assistant / tool"],["String content",""],["List<ToolCall> toolCalls","assistant 发起的调用"],["String toolCallId","tool 回应哪次调用"]]},
+    {t:"Schema", d:"给模型看的工具定义，OpenAI function-calling 的那段 JSON", f:[]},
+    {t:"Response", d:"模型的一次回复", f:[["String text",""],["List<ToolCall> toolCalls",""],["int promptTokens",""],["int completionTokens",""],["long latencyMs",""]]},
+    {t:"ToolCall", d:"回复里的一次工具调用", f:[["String id",""],["String name",""],["Map arguments",""],["String rawArguments","原文"],["boolean malformed","JSON 坏了"]]},
+   ]},
+   {g:"一致性校验", items:[
+    {t:"Verdict", d:"guard 的判定", f:[["boolean blocked",""],["String check","哪一项没过"],["String reason",""]]},
+    {t:"Block", d:"没过时传回循环的那份", f:[["String check",""],["String reason",""]]},
+   ]},
+  ];
+  const tHtml=TYPES.map(G=>`<div class="tg-group"><div class="tg-g">${G.g}</div>`+G.items.map(it=>
+    `<div class="tg-item" id="tg-${it.t}"><div class="tg-t"><b>${it.t}</b><span>${esc(it.d)}</span></div>`+
+    (it.f.length?`<div class="tg-f">${it.f.map(([n,m])=>`<div><code>${esc(n)}</code>${m?`<span>${esc(m)}</span>`:""}</div>`).join("")}</div>`:"")+`</div>`).join("")+`</div>`).join("");
+  document.getElementById("state2").innerHTML=`<h2>代码里出现的类型</h2>${tHtml}
+    <h2 style="margin-top:14px">这一步之后的对话 messages</h2><table class="vars">${rows}</table>
+    <h2 style="margin-top:14px">模型看到的清单 schema.enum</h2><div class="rt"><code>target_id ∈ ${JSON.stringify(CHOICES)}</code></div>
+    <h2 style="margin-top:14px">环境知道的事实</h2><div class="rt">昨晚守的是 5 号 · 5 号还活着 · 模型一直以为昨晚守的是 4</div>`;
+  document.querySelectorAll("#rounds2 .r").forEach(el=>el.classList.toggle("on",+el.dataset.k===cur));
+}
+document.getElementById("rounds2").innerHTML=STEPS.map(s=>`<div class="r${s.mark?" mark":""}" data-k="${s.k}" tabindex="0"><span class="n">#${s.k}</span><span>${s.label}<br><small style="color:var(--muted)">${s.sub}</small></span></div>`).join("");
+document.getElementById("rounds2").addEventListener("click",ev=>{const r=ev.target.closest(".r"); if(!r) return; cur=+r.dataset.k; draw();});
+document.getElementById("code2").addEventListener("click",ev=>{
+  const ty=ev.target.closest(".ty");
+  if(ty){ ev.stopPropagation(); const el=document.getElementById("tg-"+ty.dataset.ty); if(!el) return;
+    el.scrollIntoView({block:"start",behavior:"smooth"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); return; }
+  const ln=ev.target.closest(".ln.callable"); if(!ln) return; const id=ln.dataset.id; open.has(id)?open.delete(id):open.add(id); draw();});
+open.add(">run#4"); open.add(">run>_elicit#3");
+draw();
+window.__drawFix=draw;
+})();
+</script>
+
+<div class="app app3 off" id="app3">
+  <nav class="rounds pane" id="rounds3"></nav>
+  <main class="code pane" id="code3"></main>
+  <aside class="state pane" id="state3"></aside>
+</div>
+<script>
+(function(){
+/* ─── 场景：第 37 步轮到 6 号投票（真人座位），双击，「投 10 号」到达两次 ─── */
+const K=w=>`<span class="k">${w}</span>`, S=w=>`<span class="s">${esc(w)}</span>`, F=w=>`<span class="f">${w}</span>`, CM=w=>`<span class="cm">// ${esc(w)}</span>`;
+function esc(x){return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+const KEY='"g1:37:6:vote"';
+
+/* 每一步之后的状态 */
+const ST=[
+ {seq:37, done:"{}",            replays:0, settled:"{}",          pending:"seq 37, 6 号 vote", inbox:"[]",               votes:"{}"},
+ {seq:37, done:"{}",            replays:0, settled:"{}",          pending:"seq 37, 6 号 vote", inbox:"[(37, 投 10)]",   votes:"{}"},
+ {seq:37, done:"{}",            replays:0, settled:"{37: 投 10}", pending:"null",              inbox:"[]",               votes:"{}"},
+ {seq:38, done:"{g1:37:6:vote}",replays:0, settled:"{37: 投 10}", pending:"null",              inbox:"[]",               votes:"{6: 10}"},
+ {seq:38, done:"{g1:37:6:vote}",replays:0, settled:"{37: 投 10}", pending:"null",              inbox:"[]",               votes:"{6: 10}"},
+ {seq:38, done:"{g1:37:6:vote}",replays:1, settled:"{37: 投 10}", pending:"null",              inbox:"[]",               votes:"{6: 10}"},
+];
+const VN={seq:"ledger.seq",done:"ledger.done",replays:"ledger.replays",settled:"human.settled",pending:"human.pending",inbox:"human.inbox",votes:"env._votes"};
+const STEPS=[
+ {k:0,label:"等待",sub:"6 号的回合，前端在倒计时",crumb:"#0 · 第 37 步 · pending = (37, 6 号, vote) · 真人还没点"},
+ {k:1,label:"第一次到达",sub:"submit → accepted",crumb:"#1 · POST {seq:37, vote 10} 第一次到达 · submit 四道检查全过 · 进队列"},
+ {k:2,label:"act 取走",sub:"inbox → 结算",crumb:"#2 · act() 从队列取走 · settled[37] = 投 10 · pending 清空"},
+ {k:3,label:"apply",sub:"step 一次，seq 37→38",mark:true,crumb:"#3 · ledger.apply · 键 g1:37:6:vote 不在 done 里 · step 一次 · 世界前进"},
+ {k:4,label:"第二次到达",sub:"submit → duplicate",mark:true,crumb:"#4 · 同一个 POST 又来了 · submit 第一行就拦下 · 返回 duplicate · 到不了 apply"},
+ {k:5,label:"旁路重试",sub:"直接到 apply → 命中 done",mark:true,crumb:"#5 · 假设绕过 submit，驱动层自己重试 apply · 键已在 done 里 · 返回第一次的结果，env 没被碰"},
+];
+
+const SRC={};
+SRC.run = R => {
+  const k=R.k;
+  return [
+    {c:`${K("public")} Episode ${F("run")}(Environment env, Map<Integer, Player> players, ${K("int")} seed) {`},
+    {c:`    StepLedger ledger = ${K("new")} StepLedger(${S("g1")});`, n:"seq 从 0 开始；现在已经到 37"},
+    {c:`    ${K("while")} (turn ${K("instanceof")} Turn) {`, n:"turn = Turn(6, \"vote\")"},
+    {c:`        View view = env.observe(turn.actor);`, dim:true},
+    {c:`        ActionSpec spec = env.actionSpace(turn.actor, turn.task);`, dim:true, n:"vote 的清单：活人减自己"},
+    {c:`        Elicited e = elicit(players.get(6), view, turn.task, spec);`, child:"act", n:k<=2?"players.get(6) 是真人座位 → 进 HumanPlayer.act":k===3?"→ 投 10，forced=false":"", dim:k>=4},
+    {c:`        Applied a = ledger.${F("apply")}(env, turn, e.action, e.forced);`, child:"apply", n:k===3?"第一次：真的 step":k===5?"第二次：命中 done，直接返回":"", dim:!(k===3||k===5)},
+    {c:`        journal.add(a.record);  turn = a.next;`, n:k===3?"日志多一行；turn = 第 38 步该谁":k===5?"拿到的是同一个 a，日志不会多一行":"", dim:!(k===3||k===5)},
+    {c:`    }`},
+    {c:`}`},
+  ];
+};
+SRC.act = R => {
+  const k=R.k;
+  return [
+    {c:`${K("public")} Action ${F("act")}(View view, String task, ActionSpec spec, String feedback) {   ${CM("HumanPlayer：真人座位")}`},
+    {c:`    pending = ${K("new")} Pending(seq, task, spec);`, n:k===0?"挂出「第 37 步，等 6 号投票」，前端开始倒计时":"", dim:k!==0},
+    {c:`    ${CM("接下来 act 就卡在这里等队列；前端的 POST 走的是下面的 submit，另一条线程")}`},
+    {c:`    Entry got = inbox.poll(turnSeconds);`, child:"submit", n:k===1?"submit 那边把 (37, 投 10) 放进了队列":k===2?"取到 (37, 投 10)":k===0?"等着…":"", dim:k>2},
+    {c:`    ${K("if")} (got == ${K("null")}) ${K("return")} spec.fallback;`, dim:true, n:"(超时：兜底并标记，这次没走到)"},
+    {c:`    settled.put(got.seq, got.action);  pending = ${K("null")};`, n:k===2?"结算：settled[37] = 投 10；pending 清空":"", dim:k!==2},
+    {c:`    ${K("return")} got.action;`, n:k===2?"→ 投 10，交回驱动层":"", dim:k!==2, val:k===2},
+    {c:`}`},
+  ];
+};
+SRC.submit = R => {
+  const k=R.k, first=k===1, second=k===4;
+  return [
+    {c:`${K("public synchronized")} Map<String,Object> ${F("submit")}(${K("int")} seq, Action action) {   ${CM("HTTP 线程：POST /api/games/g1/seat/6/act")}`, n:first?"第一次到达 {seq:37, vote 10}":second?"第二次到达，一模一样":""},
+    {c:`    ${K("if")} (settled.containsKey(seq))`, n:first?"37 没结算过 → 往下":second?"37 已结算 → 拦下":"", dim:!(first||second)},
+    {c:`        ${K("return")} status(${S("duplicate")}, settled.get(seq));`, n:second?"→ {status: duplicate, action: 投 10}；不进队列，世界不动":"", dim:!second, val:second},
+    {c:`    ${K("if")} (pending == ${K("null")})`, n:first?"有 pending → 往下":"", dim:!first},
+    {c:`        ${K("return")} status(${S("not_your_turn")});`, dim:true, n:"(现在不是你的回合)"},
+    {c:`    ${K("if")} (seq != pending.seq)`, n:first?"37 == 37 → 往下":"", dim:!first},
+    {c:`        ${K("return")} status(${S("stale")}, pending.seq);`, dim:true, n:"(你以为是 37，其实已经到 40 了)"},
+    {c:`    String reason = pending.spec.${F("check")}(action);`, n:first?"同一份清单查一遍 → null":"", dim:!first},
+    {c:`    ${K("if")} (reason != ${K("null")})`, dim:!first},
+    {c:`        ${K("return")} status(${S("illegal")}, reason);`, dim:true, n:"(投了死人之类，带理由)"},
+    {c:`    inbox.put(${K("new")} Entry(seq, action));`, n:first?"(37, 投 10) 进队列 → act 那边醒了":"", dim:!first},
+    {c:`    ${K("return")} status(${S("accepted")});`, n:first?"→ {status: accepted}":"", dim:!first, val:first},
+    {c:`}`},
+  ];
+};
+SRC.apply = R => {
+  const k=R.k, first=k===3, again=k===5;
+  return [
+    {c:`Applied ${F("apply")}(Environment env, Turn turn, Action action, ${K("boolean")} forced) {   ${CM("StepLedger：每个 step 都从这里过")}`},
+    {c:`    String k = game + ":" + seq + ":" + turn.actor + ":" + turn.task;`, n:first||again?`k = ${KEY}`:"", dim:!(first||again)},
+    {c:`    ${K("if")} (done.containsKey(k)) {`, n:first?"没有 → 往下":again?"有 → 拦下":"", dim:!(first||again)},
+    {c:`        replays++;`, n:again?"replays 0 → 1，最后进统计":"", dim:!again},
+    {c:`        ${K("return")} done.get(k);`, n:again?"→ 第一次的 Applied 原样返回；env.step 没被调":"", dim:!again, val:again},
+    {c:`    }`},
+    {c:`    Record record = ${K("new")} Record(turn.actor, turn.task, action, forced);`, dim:!first},
+    {c:`    Turn next = env.${F("step")}(turn.actor, turn.task, action);`, child:"step", n:first?"世界前进：6 号的票记下，返回第 38 步该谁":"", dim:!first},
+    {c:`    Applied out = ${K("new")} Applied(record, next);`, dim:!first},
+    {c:`    done.put(k, out);`, n:first?`done[${KEY}] = out，给第二次用`:"", dim:!first},
+    {c:`    seq++;`, n:first?"37 → 38":"", dim:!first},
+    {c:`    ${K("return")} out;`, dim:!first, val:first},
+    {c:`}`},
+  ];
+};
+SRC.step = R => [
+  {c:`${K("public")} Turn ${F("step")}(${K("int")} actor, String task, Action action) {`, n:"唯一能改世界的地方"},
+  {c:`    votes.put(6, 10);`, n:"记票"},
+  {c:`    ${K("return")} next();`, n:"→ 第 38 步该谁", val:true},
+  {c:`}`},
+];
+
+const TYPES=[
+ {g:"幂等相关", items:[
+  {t:"StepLedger", d:"驱动层的账本，每个 step 都经过它", f:[["String game","对局 id"],["int seq","下一步的序号，每 step 一次加一"],["Map<String,Applied> done","键 → 第一次的结果"],["int replays","重复到达的次数，进统计"]]},
+  {t:"Applied", d:"apply 的返回", f:[["Record record","日志的那一行"],["Turn next","下一步该谁"]]},
+  {t:"HumanPlayer", d:"真人座位，实现同一个 Player.act", f:[["Pending pending","当前挂出来等真人做的回合；null = 不是你的回合"],["Map<Integer,Action> settled","已结算的 seq → 动作"],["BlockingQueue<Entry> inbox","submit 放，act 取"],["int turnSeconds","超时秒数"]]},
+  {t:"Pending", d:"挂出来等真人的那个回合", f:[["int seq",""],["String task",""],["ActionSpec spec","同一份清单，submit 用它查合法"]]},
+  {t:"Entry", d:"队列里的一项", f:[["int seq",""],["Action action",""]]},
+ ]},
+ {g:"和纠错 tab 一样的", items:[
+  {t:"Turn", d:"下一个该谁做什么", f:[["int actor",""],["String task",""]]},
+  {t:"Record", d:"日志的一行", f:[["int actor",""],["String task",""],["Action action",""],["boolean forced",""]]},
+  {t:"Action", d:"动作", f:[["String name",""],["Map args",""]]},
+  {t:"Elicited", d:"elicit 的返回", f:[["Action action",""],["boolean forced",""]]},
+ ]},
+];
+const TYPE_NAMES=["StepLedger","Applied","HumanPlayer","Pending","Entry","Turn","Record","Action","Elicited","Environment","Player","View","ActionSpec"];
+const TYPE_RE=new RegExp("(^|[^\\w\\-\"'/])("+TYPE_NAMES.join("|")+")(?![\\w\"])","g");
+function linkTypes(html){ return html.replace(TYPE_RE,(m,pre,t)=>`${pre}<span class="ty" data-ty="i-${t}">${t}</span>`); }
+const tHtml=TYPES.map(G=>`<div class="tg-group"><div class="tg-g">${G.g}</div>`+G.items.map(it=>
+  `<div class="tg-item" id="tg-i-${it.t}"><div class="tg-t"><b>${it.t}</b><span>${esc(it.d)}</span></div>`+
+  (it.f.length?`<div class="tg-f">${it.f.map(([n,m])=>`<div><code>${esc(n)}</code>${m?`<span>${esc(m)}</span>`:""}</div>`).join("")}</div>`:"")+`</div>`).join("")+`</div>`).join("");
+const NAMES={run:"run",act:"act",submit:"submit",apply:"apply",step:"step"};
+
+let cur=0; const open=new Set();
+function renderFn(name, R, path){
+  const lines=SRC[name](R);
+  let h=`<div class="fn"><div class="hd"><b>${NAMES[name]}()</b><span>${path.replace(/>/g," › ")}</span></div>`;
+  lines.forEach((l,i)=>{
+    const id=path+">"+name+"#"+i, has=!!l.child, isOpen=open.has(id);
+    h+=`<div class="ln${l.dim?" dim":""}${has?" callable":""}" data-id="${esc(id)}"><span class="tg">${has?(isOpen?"▾":"▸"):""}</span><span class="c">${linkTypes(l.c)}</span><span class="note${l.val?" val":""}">${l.n?esc(l.n):""}</span></div>`;
+    if(has&&isOpen) h+=`<div class="nest">${renderFn(l.child, R, path+">"+name)}</div>`;
+  });
+  return h+`</div>`;
+}
+function draw(){
+  const R=STEPS[cur], st=ST[cur], prev=cur>0?ST[cur-1]:null;
+  document.getElementById("code3").innerHTML=`<div class="crumb">${esc(R.crumb)}</div>`+renderFn("run",R,"");
+  const rows=Object.keys(VN).map(v=>{const ch=prev&&prev[v]!==st[v]; return `<tr class="${ch?"chg":""}"><td class="vn">${VN[v]}</td><td>${ch?`<span class="was">${esc(prev[v])}</span>`:""}${esc(st[v])}</td></tr>`}).join("");
+  document.getElementById("state3").innerHTML=`<h2>这一步之后的状态</h2><table class="vars">${rows}</table>
+    <h2 style="margin-top:14px">这一步的返回</h2><div class="rt">${esc(cur===1?"submit → {status: accepted}":cur===4?"submit → {status: duplicate, action: 投 10}":cur===3?"apply → Applied(record, next=第 38 步)":cur===5?"apply → 同一个 Applied（第一次的）":cur===2?"act → 投 10":"（等待中）")}</div>
+    <h2 style="margin-top:14px">代码里出现的类型</h2>${tHtml}`;
+  document.querySelectorAll("#rounds3 .r").forEach(el=>el.classList.toggle("on",+el.dataset.k===cur));
+}
+document.getElementById("rounds3").innerHTML=STEPS.map(s=>`<div class="r${s.mark?" mark":""}" data-k="${s.k}" tabindex="0"><span class="n">#${s.k}</span><span>${s.label}<br><small style="color:var(--muted)">${s.sub}</small></span></div>`).join("");
+document.getElementById("rounds3").addEventListener("click",ev=>{const r=ev.target.closest(".r"); if(!r) return; cur=+r.dataset.k; draw();});
+document.getElementById("code3").addEventListener("click",ev=>{
+  const ty=ev.target.closest(".ty");
+  if(ty){ ev.stopPropagation(); const el=document.getElementById("tg-"+ty.dataset.ty); if(!el) return;
+    el.scrollIntoView({block:"start",behavior:"smooth"}); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); return; }
+  const ln=ev.target.closest(".ln.callable"); if(!ln) return; const id=ln.dataset.id; open.has(id)?open.delete(id):open.add(id); draw();});
+open.add(">run#5"); open.add(">run>act#3"); open.add(">run#6");
+draw();
+})();
+</script>
+
+
+
+<section class="demo" id="demo" role="tabpanel">
+  <div class="top"><h2>同一局，两种存法</h2>
+    <span class="now" id="d-now"></span></div>
+  <p class="sub">真实的一局八人局，逐步录下来。<b>左边</b>是快照式：每走一步就把整个世界重存一份，着色的是这一步真正变了的字段。<b>右边</b>是日志式：每走一步只追加一行。往后点，看两边分别长成什么样。</p>
+  <div class="bar">
+    <button id="d-prev">← 上一步</button>
+    <button id="d-next">下一步 →</button>
+    <input type="range" id="d-range" min="1" value="1">
+    <button id="d-play">自动播放</button>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>快照：这一步存下的整个世界 <em id="d-sb"></em></h3><div class="body" id="d-snap"></div></div>
+    <div class="card"><h3>日志：到这一步为止的全部内容 <em id="d-jb"></em></h3><div class="body" id="d-jour"></div></div>
+  </div>
+  <div class="tot">
+    <div class="a"><span class="n" id="d-stot"></span><span class="k">快照累计（字节）</span></div>
+    <div class="b"><span class="n" id="d-jtot"></span><span class="k">日志累计（字节）</span></div>
+    <div><span class="n" id="d-ratio"></span><span class="k">倍数</span></div>
+  </div>
+  <div class="meter">
+    <div class="row"><span>快照</span><span class="track"><span class="fill" id="d-m1"></span></span><span id="d-l1"></span></div>
+    <div class="row"><span>日志</span><span class="track"><span class="fill acc" id="d-m2"></span></span><span id="d-l2"></span></div>
+  </div>
+</section>
+
+<script>
+(function(){
+  const app=document.querySelector(".app"), paper=document.getElementById("paper"),
+        hint=document.getElementById("hint"),
+        tr=document.getElementById("tab-run"), tp=document.getElementById("tab-paper");
+  const demo=document.getElementById("demo"), td=document.getElementById("tab-demo");
+  const fix=document.getElementById("app2"), tf=document.getElementById("tab-fix");
+  const idem=document.getElementById("app3"), tid=document.getElementById("tab-idem");
+  function show(which){
+    app.classList.toggle("off", which!=="run");
+    fix.classList.toggle("off", which!=="fix");
+    idem.classList.toggle("off", which!=="idem");
+    tf.setAttribute("aria-selected", String(which==="fix"));
+    tid.setAttribute("aria-selected", String(which==="idem"));
+    paper.classList.toggle("on", which==="paper");
+    demo.classList.toggle("on", which==="demo");
+    hint.style.display = which==="run" ? "" : "none";
+    tr.setAttribute("aria-selected", String(which==="run"));
+    tp.setAttribute("aria-selected", String(which==="paper"));
+    td.setAttribute("aria-selected", String(which==="demo"));
+    if(which!=="run") window.scrollTo({top:0});
+  }
+  tr.onclick=()=>show("run"); tp.onclick=()=>show("paper"); td.onclick=()=>show("demo"); tf.onclick=()=>show("fix"); tid.onclick=()=>show("idem");
+})();
+</script>
+
+<script id="demo-data" type="application/json">[{"i": 1, "line": "{\"actor\": 5, \"task\": \"night\", \"action\": {\"name\": \"night_skip\", \"args\": {}}}", "jb": 75, "sb": 1571, "jtot": 75, "stot": 2964, "fields": [{"k": "_action_log", "n": 162, "chg": true, "v": "{\"1\": [], \"2\": [], \"3\": [], \"4\": [], \"5\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_s…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_night_records", "n": 92, "chg": true, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_phase", "n": 7, "chg": false, "v": "\"night\""}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_night_done", "n": 5, "chg": true, "v": "\"{5}\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}, {"k": "_guarded", "n": 4, "chg": false, "v": "null"}], "nfields": 57, "rest": 1087}, {"i": 2, "line": "{\"actor\": 7, \"task\": \"night\", \"action\": {\"name\": \"night_skip\", \"args\": {}}}", "jb": 75, "sb": 1756, "jtot": 150, "stot": 4720, "fields": [{"k": "_action_log", "n": 252, "chg": true, "v": "{\"1\": [], \"2\": [], \"3\": [], \"4\": [], \"5\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_s…"}, {"k": "_night_records", "n": 184, "chg": true, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_night_done", "n": 8, "chg": true, "v": "\"{5, 7}\""}, {"k": "_phase", "n": 7, "chg": false, "v": "\"night\""}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}, {"k": "_guarded", "n": 4, "chg": false, "v": "null"}], "nfields": 57, "rest": 1087}, {"i": 3, "line": "{\"actor\": 8, \"task\": \"night\", \"action\": {\"name\": \"night_skip\", \"args\": {}}}", "jb": 75, "sb": 1941, "jtot": 225, "stot": 6661, "fields": [{"k": "_action_log", "n": 342, "chg": true, "v": "{\"1\": [], \"2\": [], \"3\": [], \"4\": [], \"5\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_s…"}, {"k": "_night_records", "n": 276, "chg": true, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_done", "n": 11, "chg": true, "v": "\"{8, 5, 7}\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_phase", "n": 7, "chg": false, "v": "\"night\""}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}, {"k": "_guarded", "n": 4, "chg": false, "v": "null"}], "nfields": 57, "rest": 1087}, {"i": 4, "line": "{\"actor\": 1, \"task\": \"night\", \"action\": {\"name\": \"night_skip\", \"args\": {}}}", "jb": 75, "sb": 2131, "jtot": 300, "stot": 8792, "fields": [{"k": "_action_log", "n": 432, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_night_records", "n": 368, "chg": true, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": true, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": true, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}, {"k": "_guarded", "n": 4, "chg": false, "v": "null"}], "nfields": 57, "rest": 1087}, {"i": 5, "line": "{\"actor\": 1, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 2262, "jtot": 404, "stot": 11054, "fields": [{"k": "_action_log", "n": 494, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_speeches", "n": 71, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\"]"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": false, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1089}, {"i": 6, "line": "{\"actor\": 2, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 2393, "jtot": 508, "stot": 13447, "fields": [{"k": "_action_log", "n": 554, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_speeches", "n": 142, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": false, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1089}, {"i": 7, "line": "{\"actor\": 3, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 2524, "jtot": 612, "stot": 15971, "fields": [{"k": "_action_log", "n": 614, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_speeches", "n": 213, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": false, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1089}, {"i": 8, "line": "{\"actor\": 4, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 2655, "jtot": 716, "stot": 18626, "fields": [{"k": "_action_log", "n": 674, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_speeches", "n": 284, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": false, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1089}, {"i": 9, "line": "{\"actor\": 5, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 2788, "jtot": 820, "stot": 21414, "fields": [{"k": "_action_log", "n": 736, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_speeches", "n": 355, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": false, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1089}, {"i": 10, "line": "{\"actor\": 6, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 2919, "jtot": 924, "stot": 24333, "fields": [{"k": "_action_log", "n": 796, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 426, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": false, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1089}, {"i": 11, "line": "{\"actor\": 7, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 3052, "jtot": 1028, "stot": 27385, "fields": [{"k": "_action_log", "n": 858, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 497, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_phase", "n": 12, "chg": false, "v": "\"day_speech\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}, {"k": "_review_done", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1089}, {"i": 12, "line": "{\"actor\": 8, \"task\": \"speak\", \"action\": {\"name\": \"speak\", \"args\": {\"content\": \"...\", \"thought\": \"...\"}}}", "jb": 104, "sb": 3205, "jtot": 1132, "stot": 30590, "fields": [{"k": "_action_log", "n": 920, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": true, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": true, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": true, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}, {"k": "_sheriff_settled", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1092}, {"i": 13, "line": "{\"actor\": 1, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 2, \"thought\": \"...\"}}}", "jb": 100, "sb": 3277, "jtot": 1232, "stot": 33867, "fields": [{"k": "_action_log", "n": 979, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_votes", "n": 15, "chg": true, "v": "{\"1\": {\"1\": 2}}"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": false, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1095}, {"i": 14, "line": "{\"actor\": 2, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 1, \"thought\": \"...\"}}}", "jb": 100, "sb": 3344, "jtot": 1332, "stot": 37211, "fields": [{"k": "_action_log", "n": 1038, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_votes", "n": 23, "chg": true, "v": "{\"1\": {\"1\": 2, \"2\": 1}}"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": false, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1095}, {"i": 15, "line": "{\"actor\": 3, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 1, \"thought\": \"...\"}}}", "jb": 100, "sb": 3411, "jtot": 1432, "stot": 40622, "fields": [{"k": "_action_log", "n": 1097, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_votes", "n": 31, "chg": true, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1}}"}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": false, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1095}, {"i": 16, "line": "{\"actor\": 4, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 1, \"thought\": \"...\"}}}", "jb": 100, "sb": 3478, "jtot": 1532, "stot": 44100, "fields": [{"k": "_action_log", "n": 1156, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_votes", "n": 39, "chg": true, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1}}"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": false, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1095}, {"i": 17, "line": "{\"actor\": 5, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 1, \"thought\": \"...\"}}}", "jb": 100, "sb": 3545, "jtot": 1632, "stot": 47645, "fields": [{"k": "_action_log", "n": 1215, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_votes", "n": 47, "chg": true, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1}}"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": false, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1095}, {"i": 18, "line": "{\"actor\": 6, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 1, \"thought\": \"...\"}}}", "jb": 100, "sb": 3612, "jtot": 1732, "stot": 51257, "fields": [{"k": "_action_log", "n": 1274, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_votes", "n": 55, "chg": true, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1, \"6\": 1}}"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": false, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1095}, {"i": 19, "line": "{\"actor\": 7, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 1, \"thought\": \"...\"}}}", "jb": 100, "sb": 3679, "jtot": 1832, "stot": 54936, "fields": [{"k": "_action_log", "n": 1333, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_votes", "n": 63, "chg": true, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1, \"6\": 1, \"7\": 1}}"}, {"k": "_alive", "n": 37, "chg": false, "v": "\"frozenset({1, 2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_done", "n": 14, "chg": false, "v": "\"{8, 1, 5, 7}\""}, {"k": "_night_queue", "n": 12, "chg": false, "v": "[5, 7, 8, 1]"}, {"k": "_phase", "n": 10, "chg": false, "v": "\"day_vote\""}, {"k": "_night_victims", "n": 9, "chg": false, "v": "{\"1\": []}"}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_chat_done", "n": 5, "chg": false, "v": "false"}, {"k": "_pack_planned", "n": 5, "chg": false, "v": "false"}], "nfields": 57, "rest": 1095}, {"i": 20, "line": "{\"actor\": 8, \"task\": \"vote\", \"action\": {\"name\": \"vote\", \"args\": {\"target_id\": 1, \"thought\": \"...\"}}}", "jb": 100, "sb": 3788, "jtot": 1932, "stot": 58724, "fields": [{"k": "_action_log", "n": 1392, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 368, "chg": false, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_votes", "n": 71, "chg": true, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1, \"6\": 1, \"7\": 1, \"8\": 1}}"}, {"k": "_deaths", "n": 45, "chg": true, "v": "[\"Death(round=1, player_id=1, cause='vote')\"]"}, {"k": "_alive", "n": 34, "chg": true, "v": "\"frozenset({2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_victims", "n": 18, "chg": true, "v": "{\"1\": [], \"2\": []}"}, {"k": "_night_queue", "n": 9, "chg": true, "v": "[5, 7, 8]"}, {"k": "_exiles", "n": 8, "chg": true, "v": "{\"1\": 1}"}, {"k": "_phase", "n": 7, "chg": true, "v": "\"night\""}, {"k": "_night_done", "n": 7, "chg": true, "v": "\"set()\""}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}], "nfields": 57, "rest": 1101}, {"i": 21, "line": "{\"actor\": 5, \"task\": \"night\", \"action\": {\"name\": \"night_skip\", \"args\": {}}}", "jb": 75, "sb": 3970, "jtot": 2007, "stot": 62694, "fields": [{"k": "_action_log", "n": 1484, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 460, "chg": true, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_votes", "n": 71, "chg": false, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1, \"6\": 1, \"7\": 1, \"8\": 1}}"}, {"k": "_deaths", "n": 45, "chg": false, "v": "[\"Death(round=1, player_id=1, cause='vote')\"]"}, {"k": "_alive", "n": 34, "chg": false, "v": "\"frozenset({2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_victims", "n": 18, "chg": false, "v": "{\"1\": [], \"2\": []}"}, {"k": "_night_queue", "n": 9, "chg": false, "v": "[5, 7, 8]"}, {"k": "_exiles", "n": 8, "chg": false, "v": "{\"1\": 1}"}, {"k": "_phase", "n": 7, "chg": false, "v": "\"night\""}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}, {"k": "_night_done", "n": 5, "chg": true, "v": "\"{5}\""}], "nfields": 57, "rest": 1101}, {"i": 22, "line": "{\"actor\": 7, \"task\": \"night\", \"action\": {\"name\": \"night_skip\", \"args\": {}}}", "jb": 75, "sb": 4157, "jtot": 2082, "stot": 66851, "fields": [{"k": "_action_log", "n": 1576, "chg": true, "v": "{\"1\": [{\"round\": 1, \"phase\": \"night\", \"kind\": \"night_skip\", \"target\": null, \"outcome\": \"sk…"}, {"k": "_speeches", "n": 568, "chg": false, "v": "[\"Speech(round=1, player_id=1, order=0, content='...', kind='speech')\", \"Speech(round=1, p…"}, {"k": "_night_records", "n": 552, "chg": true, "v": "[{\"round\": 1, \"player_id\": 5, \"action\": \"night_skip\", \"target\": null, \"outcome\": \"skipped\"…"}, {"k": "_roles", "n": 129, "chg": false, "v": "{\"1\": \"witch\", \"2\": \"villager\", \"3\": \"villager\", \"4\": \"villager\", \"5\": \"seer\", \"6\": \"villa…"}, {"k": "_votes", "n": 71, "chg": false, "v": "{\"1\": {\"1\": 2, \"2\": 1, \"3\": 1, \"4\": 1, \"5\": 1, \"6\": 1, \"7\": 1, \"8\": 1}}"}, {"k": "_deaths", "n": 45, "chg": false, "v": "[\"Death(round=1, player_id=1, cause='vote')\"]"}, {"k": "_alive", "n": 34, "chg": false, "v": "\"frozenset({2, 3, 4, 5, 6, 7, 8})\""}, {"k": "_day_voters", "n": 24, "chg": false, "v": "[1, 2, 3, 4, 5, 6, 7, 8]"}, {"k": "_night_victims", "n": 18, "chg": false, "v": "{\"1\": [], \"2\": []}"}, {"k": "_night_queue", "n": 9, "chg": false, "v": "[5, 7, 8]"}, {"k": "_exiles", "n": 8, "chg": false, "v": "{\"1\": 1}"}, {"k": "_night_done", "n": 8, "chg": true, "v": "\"{5, 7}\""}, {"k": "_phase", "n": 7, "chg": false, "v": "\"night\""}, {"k": "_last_words_given", "n": 7, "chg": false, "v": "\"set()\""}], "nfields": 57, "rest": 1101}]</script>
+<script>
+(function(){
+  const S = JSON.parse(document.getElementById("demo-data").textContent);
+  const $ = (id) => document.getElementById(id);
+  let i = 1, timer = null;
+  $("d-range").max = S.length;
+  const fmt = (n) => n.toLocaleString("en-US");
+
+  function draw(){
+    const d = S[i-1];
+    $("d-now").textContent = `第 ${d.i} / ${S.length} 步 · ${JSON.parse(d.line).actor} 号 ${JSON.parse(d.line).task}`;
+    $("d-range").value = i;
+    $("d-prev").disabled = i === 1;
+    $("d-next").disabled = i === S.length;
+    $("d-sb").textContent = fmt(d.sb) + " 字节";
+    $("d-jb").textContent = fmt(d.jtot) + " 字节";
+
+    const snap = $("d-snap"); snap.textContent = "";
+    for (const f of d.fields){
+      const row = document.createElement("div");
+      row.className = "f" + (f.chg ? " chg" : "");
+      const a = document.createElement("span"); a.className = "fn"; a.textContent = f.k;
+      const b = document.createElement("span"); b.className = "fb"; b.textContent = f.n;
+      const c = document.createElement("span"); c.className = "fv"; c.textContent = f.v;
+      row.append(a, b, c); snap.append(row);
+    }
+    const rest = document.createElement("div");
+    rest.className = "rest";
+    rest.textContent = `…其余 ${d.nfields - d.fields.length} 个字段，共 ${fmt(d.rest)} 字节 —— 同样每步重存一遍`;
+    snap.append(rest);
+
+    const jour = $("d-jour"); jour.textContent = "";
+    for (let k = 0; k < i; k++){
+      const row = document.createElement("div");
+      row.className = "jl" + (k === i-1 ? " new" : "");
+      row.textContent = `${k+1}  ${S[k].line}`;
+      jour.append(row);
+    }
+    jour.scrollTop = jour.scrollHeight;
+
+    $("d-stot").textContent = fmt(d.stot);
+    $("d-jtot").textContent = fmt(d.jtot);
+    $("d-ratio").textContent = (d.stot / d.jtot).toFixed(0) + "×";
+    const w = Math.max(1, 100 * d.jtot / d.stot);
+    $("d-m1").style.width = "100%";
+    $("d-m2").style.width = w + "%";
+    $("d-l1").textContent = fmt(d.stot);
+    $("d-l2").textContent = fmt(d.jtot);
+  }
+  $("d-prev").onclick = () => { i = Math.max(1, i-1); draw(); };
+  $("d-next").onclick = () => { i = Math.min(S.length, i+1); draw(); };
+  $("d-range").oninput = (e) => { i = +e.target.value; draw(); };
+  $("d-play").onclick = () => {
+    if (timer){ clearInterval(timer); timer = null; $("d-play").textContent = "自动播放"; return; }
+    $("d-play").textContent = "停";
+    timer = setInterval(() => {
+      if (i >= S.length){ clearInterval(timer); timer = null; $("d-play").textContent = "自动播放"; return; }
+      i++; draw();
+    }, 550);
+  };
+  draw();
+})();
+</script>
+</body>
+</html>

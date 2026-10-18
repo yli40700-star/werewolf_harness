@@ -1,0 +1,344 @@
+{
+ "title": "werewolf_harness",
+ "uid": "werewolf",
+ "schemaVersion": 39,
+ "time": {
+  "from": "now-1h",
+  "to": "now"
+ },
+ "refresh": "10s",
+ "panels": [
+  {
+   "type": "timeseries",
+   "title": "Active games / WS connections",
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(wh_active_games)",
+     "legendFormat": "games"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(wh_ws_connections)",
+     "legendFormat": "ws"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Commit latency p50/p99 (ms)",
+   "gridPos": {
+    "x": 8,
+    "y": 0,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.5,sum(rate(wh_commit_ms_bucket[5m])) by (le))",
+     "legendFormat": "p50"
+    },
+    {
+     "refId": "B",
+     "expr": "histogram_quantile(0.99,sum(rate(wh_commit_ms_bucket[5m])) by (le))",
+     "legendFormat": "p99"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "HTTP p99 by route (ms)",
+   "gridPos": {
+    "x": 16,
+    "y": 0,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.99,sum(rate(wh_http_request_ms_bucket[5m])) by (le,route))",
+     "legendFormat": "{{route}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Model call p95 (ms)",
+   "gridPos": {
+    "x": 0,
+    "y": 7,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95,sum(rate(wh_llm_call_ms_bucket[5m])) by (le,model))",
+     "legendFormat": "{{model}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Prompt cache hit rate",
+   "gridPos": {
+    "x": 8,
+    "y": 7,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percentunit"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(wh_llm_tokens_total{kind=\"cached\"}[10m]))/sum(rate(wh_llm_tokens_total{kind=\"input\"}[10m]))",
+     "legendFormat": "hit rate"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Spend (USD/hour)",
+   "gridPos": {
+    "x": 16,
+    "y": 7,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "currencyUSD"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(wh_llm_cost_usd_total[10m]))*3600",
+     "legendFormat": "usd/h"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Fallbacks / breaker open",
+   "gridPos": {
+    "x": 0,
+    "y": 14,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(rate(wh_llm_fallbacks_total[5m])) by (reason)",
+     "legendFormat": "{{reason}}"
+    },
+    {
+     "refId": "B",
+     "expr": "max(wh_breaker_open) by (provider)",
+     "legendFormat": "open {{provider}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Queue wait p95 by lane (ms)",
+   "gridPos": {
+    "x": 8,
+    "y": 14,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "ms"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95,sum(rate(wh_llm_queue_wait_ms_bucket[5m])) by (le,lane))",
+     "legendFormat": "{{lane}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Recovery & stale results",
+   "gridPos": {
+    "x": 16,
+    "y": 14,
+    "w": 8,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(wh_adoptions_total[10m]))",
+     "legendFormat": "adoptions"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(increase(wh_stale_agent_results_total[10m]))",
+     "legendFormat": "stale"
+    },
+    {
+     "refId": "C",
+     "expr": "sum(increase(wh_rate_limited_total[10m])) by (scope)",
+     "legendFormat": "limited {{scope}}"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Mailbox backlog / timers / agents in flight",
+   "gridPos": {
+    "x": 0,
+    "y": 21,
+    "w": 12,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(wh_mailbox_backlog)",
+     "legendFormat": "mailbox"
+    },
+    {
+     "refId": "B",
+     "expr": "sum(wh_timers_pending)",
+     "legendFormat": "timers"
+    },
+    {
+     "refId": "C",
+     "expr": "sum(wh_agents_inflight)",
+     "legendFormat": "agents"
+    }
+   ]
+  },
+  {
+   "type": "timeseries",
+   "title": "Games finished",
+   "gridPos": {
+    "x": 12,
+    "y": 21,
+    "w": 12,
+    "h": 7
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(increase(wh_games_finished_total[10m])) by (result)",
+     "legendFormat": "{{result}}"
+    }
+   ]
+  }
+ ]
+}

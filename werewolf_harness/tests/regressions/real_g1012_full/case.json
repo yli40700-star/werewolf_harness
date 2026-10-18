@@ -1,0 +1,13 @@
+{
+ "name": "real_g1012_full",
+ "source": "g1012.json",
+ "upto": null,
+ "expect": [
+  "winner:village"
+ ],
+ "allow_drift": false,
+ "note": "真实 haiku 整局：schema 与语义拦截后重试、v2 平票 PK、好人胜",
+ "calls": 123,
+ "steps": 58,
+ "created": "2026-10-14"
+}

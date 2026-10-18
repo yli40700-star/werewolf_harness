@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+games/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
