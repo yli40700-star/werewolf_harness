@@ -49,7 +49,7 @@ async def lanes(priority: bool) -> dict:
     s = Settings(database_url=DB, redis_url=RD, node_id="bench", agent_timeout_s=120)
     rt = Runtime(s, store, r, executor=StreamExecutor(r, s))
     await rt.start(scan=False)
-    w = Worker(s, store, r, Hub(RD, default_tpm=10**9), consumer="w", concurrency=4)
+    w = Worker(s, r, Hub(RD, default_tpm=10**9), consumer="w", concurrency=4)
     wt = asyncio.create_task(w.run())
     human = [await rt.create(TableConfig(variant="8p", models=["sim-bench"], lane="human" if priority else "online"),
                              seed=100 + i) for i in range(3)]

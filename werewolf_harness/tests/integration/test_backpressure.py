@@ -221,10 +221,10 @@ async def test_streams_load_sample_and_stale_replies_free_the_games_slot(setting
     from ..test_backpressure import _job
     ex = StreamExecutor(redis, settings, per_game_asks=2)
     await ex.start()
-    w = Worker(settings, store, redis, None, consumer="w-bp", concurrency=3)
+    w = Worker(settings, redis, None, consumer="w-bp", concurrency=3)
     await w.ensure_groups()
     for seat in range(1, 6):
-        ex.submit(_job("nogame", seat=seat), lambda r: None)   # a game the worker will not find: stale
+        ex.submit(_job("nogame", seat=seat), lambda r: None)   # no view/settings to run on: stale
     await asyncio.sleep(0.2)
     s = await ex.load_sample()
     assert s.depth["online"] == 2 and s.depth["held"] == 3     # 2 in the stream, 3 held on the node

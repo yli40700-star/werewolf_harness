@@ -85,8 +85,11 @@ class Cluster:
                                                        "werewolf_harness.app.api.main:app", "--port", str(port),
                                                        "--log-level", "warning"],
                                    {**base, "NODE_ID": f"api{i}"}, run_dir, port))
+        # workers get no database (a dead address): the job carries the turn, the call records
+        # go back over Redis, so a worker that reached for Postgres would fail the run
         self.workers = [Proc(f"worker{i}", "worker", [sys.executable, "-m", "werewolf_harness.app.llm.worker"],
-                             {**base, "NODE_ID": f"worker{i}"}, run_dir) for i in range(1, workers + 1)]
+                             {**base, "NODE_ID": f"worker{i}", "DATABASE_URL": "postgresql+asyncpg://none@127.0.0.1:9/none"},
+                             run_dir) for i in range(1, workers + 1)]
 
     @property
     def procs(self) -> list[Proc]:

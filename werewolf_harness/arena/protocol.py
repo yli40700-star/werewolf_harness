@@ -4,8 +4,10 @@ An environment implements five methods. Nothing here knows what a game is.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any, Protocol, runtime_checkable
+
+from . import wire
 
 
 # ── what step() hands back ─────────────────────────────────────────────
@@ -39,6 +41,47 @@ class Param:
     range: tuple[float, float] | None = None
     default: Any = None
 
+    def to_dict(self) -> dict:
+        return {f.name: wire.encode(getattr(self, f.name)) for f in fields(self)}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> Param:
+        return cls(**{k: wire.decode(v) for k, v in d.items()})
+
+
+@dataclass(frozen=True)
+class AssignRule:
+    """A cross-argument rule, as data: the dict argument `param` must give every key in
+    `keys` exactly one value, and every value must be one of `values`.
+
+    Checked in this order, each failure worded by its template ({bad}: the offending
+    items, sorted; {keys}: `keys` as a list): unknown value, key not in `keys`, key
+    of `keys` missing. Data rather than a callable so that an ActionSpec survives the
+    trip to a model worker (ActionSpec.to_dict) and still refuses the same inputs there.
+    """
+    param: str
+    keys: tuple
+    values: tuple
+    unknown: str = "{bad} not allowed"
+    extra: str = "{bad} not expected; expected exactly {keys}"
+    missing: str = "{bad} missing; expected exactly {keys}"
+
+    def check(self, args: dict) -> str | None:
+        got = args.get(self.param) or {}
+        for template, bad in ((self.unknown, set(got.values()) - set(self.values)),
+                              (self.extra, set(got) - set(self.keys)),
+                              (self.missing, set(self.keys) - set(got))):
+            if bad:
+                return template.format(bad=sorted(bad), keys=list(self.keys))
+        return None
+
+    def to_dict(self) -> dict:
+        return {f.name: wire.encode(getattr(self, f.name)) for f in fields(self)}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> AssignRule:
+        return cls(**{k: wire.decode(v) for k, v in d.items()})
+
 
 @dataclass(frozen=True)
 class ToolSpec:
@@ -51,7 +94,11 @@ class ToolSpec:
     name: str
     description: str
     params: dict[str, Param] = field(default_factory=dict)
-    validate: Any = None          # optional callable(args) -> reason | None, for cross-argument rules
+    # Cross-argument rules, checked on the normalised args after every Param passed.
+    # `rules` are data and travel with the spec (to_dict); `validate` is an in-process
+    # callable(args) -> reason | None and cannot be sent to a worker.
+    validate: Any = None
+    rules: tuple[AssignRule, ...] = ()
 
     def check(self, args: dict) -> str | None:
         if not isinstance(args, dict):
@@ -59,9 +106,31 @@ class ToolSpec:
         reason = self._check_params(args)
         if reason:
             return reason
+        if self.validate is None and not self.rules:
+            return None
+        norm = self.normalise(args)
         if self.validate is not None:
-            return self.validate(self.normalise(args))
+            reason = self.validate(norm)
+            if reason:
+                return reason
+        for rule in self.rules:
+            reason = rule.check(norm)
+            if reason:
+                return reason
         return None
+
+    def to_dict(self) -> dict:
+        if self.validate is not None:
+            raise ValueError(f"tool {self.name!r} has a validate callable, which cannot be serialised; "
+                             "express the rule as data (AssignRule)")
+        return {"name": self.name, "description": self.description,
+                "params": {k: p.to_dict() for k, p in self.params.items()},
+                "rules": [r.to_dict() for r in self.rules]}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ToolSpec:
+        return cls(d["name"], d["description"], {k: Param.from_dict(p) for k, p in d.get("params", {}).items()},
+                   rules=tuple(AssignRule.from_dict(r) for r in d.get("rules") or ()))
 
     def _check_params(self, args: dict) -> str | None:
         extra = set(args) - set(self.params)
@@ -175,6 +244,20 @@ class ActionSpec:
 
     def tool(self, name: str) -> ToolSpec | None:
         return next((t for t in self.tools if t.name == name), None)
+
+    def to_dict(self) -> dict:
+        """Plain JSON (with arena.wire tags): what a model worker needs to render the turn's
+        tools and check an answer. ``from_dict(json.loads(json.dumps(to_dict())))`` equals
+        the original, so the prompt, the tool schemas and check() are the same there."""
+        return {"kind": self.kind, "options": wire.encode(self.options), "max_len": self.max_len,
+                "fields": wire.encode(self.fields), "tools": [t.to_dict() for t in self.tools],
+                "fallback": wire.encode(self.fallback)}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ActionSpec:
+        return cls(d["kind"], options=wire.decode(d.get("options", {wire.TUPLE: []})), max_len=d.get("max_len", 400),
+                   fields=wire.decode(d.get("fields") or {}), tools=tuple(ToolSpec.from_dict(t) for t in d.get("tools") or ()),
+                   fallback=wire.decode(d.get("fallback")))
 
     def check(self, action: Any) -> str | None:
         """Return a reason string if illegal, None if fine."""

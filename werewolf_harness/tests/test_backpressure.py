@@ -167,6 +167,9 @@ class _Spec:
     def check(self, _a):
         return None
 
+    def to_dict(self):
+        return {"kind": "tool", "fallback": self.fallback}
+
 
 def _job(game: str, version: int = 5, lane: str = "online", seat: int = 1) -> AgentJob:
     return AgentJob(game, seat, version, "vote", {}, _Spec(), None, make_player=lambda on_step: None, lane=lane)
@@ -310,7 +313,7 @@ async def test_streams_executor_cancel_keeps_a_held_job_from_going_out():
     import json as _json
 
     from werewolf_harness.app.config import Settings
-    from werewolf_harness.app.llm.queue import CANCEL_CHANNEL, StreamExecutor
+    from werewolf_harness.app.llm.queue import CANCEL_CHANNEL, StreamExecutor, closed_key
     r = _FakeRedis()
     ex = StreamExecutor(r, Settings(), per_game_asks=1)
     j1, j2 = _job("A", seat=1), _job("A", seat=2)
@@ -321,8 +324,10 @@ async def test_streams_executor_cancel_keeps_a_held_job_from_going_out():
     await asyncio.sleep(0)
     ex._settle("A", 1, 5)                                 # j1's (cancelled) answer frees the slot...
     await asyncio.sleep(0)
-    assert [f["seat"] for _k, f in r.added] == [1]        # ...and j2 does not go out
+    assert [f["seat"] for _k, f in r.added] == []         # ...and j2 does not go out (nor j1: cancelled
+                                                          # before its XADD ran, it is not sent at all)
     assert [(c, _json.loads(m)["job_id"]) for c, m in r.published] == [(CANCEL_CHANNEL, j1.job_id)]
+    assert list(r.keys) == [closed_key(j1.job_id)]       # a worker that never hears the PUBLISH still finds it
 
 
 # ------------------------------------------------------------------ streams per-game cap
@@ -330,9 +335,13 @@ class _FakeRedis:
     def __init__(self):
         self.added: list[tuple[str, dict]] = []
         self.published: list[tuple[str, str]] = []
+        self.keys: dict[str, str] = {}
 
     async def xadd(self, key, fields, **kw):
         self.added.append((key, fields))
+
+    async def set(self, key, value, **kw):
+        self.keys[key] = value
 
     async def publish(self, channel, msg):
         self.published.append((channel, msg))
@@ -381,3 +390,32 @@ def test_lobby_shows_the_queue_position_and_a_load_badge():
     assert "当前排队中：第 ${q.position} 位，预计 ${q.eta_s} 秒" in js
     assert '"/api/load"' in js and "/queue`" in js
     assert "r.status === 202" in js and "r.status === 503" in js
+
+
+async def test_a_job_cancelled_while_redis_is_away_is_not_sent_when_it_returns():
+    """The worker no longer checks the journal before a job, so a job its actor gave up on
+    during the outage must not reach the stream afterwards: its turn may be committed by then."""
+    from werewolf_harness.app.config import Settings
+    from werewolf_harness.app.llm.queue import StreamExecutor, closed_key
+
+    class _Away(_FakeRedis):
+        def __init__(self):
+            super().__init__()
+            self.fails = 0
+
+        async def xadd(self, key, fields, **kw):
+            if self.fails < 1:                           # down once; back by the next try
+                self.fails += 1
+                raise ConnectionError("Connection reset by peer")
+            await super().xadd(key, fields, **kw)
+    r = _Away()
+    ex = StreamExecutor(r, Settings(), per_game_asks=4)
+    j = _job("A")
+    ex.submit(j, lambda res: None)
+    for _ in range(100):
+        if r.fails:
+            break
+        await asyncio.sleep(0.01)
+    ex.cancel(j, "timeout")                                 # the deadline fired while Redis was away
+    await asyncio.sleep(1.0)                                # past the send loop's retries
+    assert r.added == [] and closed_key(j.job_id) in r.keys

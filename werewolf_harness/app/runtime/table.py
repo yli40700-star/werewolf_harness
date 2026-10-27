@@ -16,7 +16,6 @@ Two leaks the old server had are closed here and pinned by tests:
 """
 from __future__ import annotations
 
-import os
 import random
 import time
 from dataclasses import dataclass, field
@@ -24,13 +23,10 @@ from typing import Any
 
 from ...arena import Record, StepLedger, Terminal, Turn
 from ...envs import BASELINE_ENGINE_VERSION, ENGINE_VERSION, VARIANTS, Werewolf
-from ...players import GuardStack, LLMPlayer, MockClient, RandomPlayer, RecoveryPolicy, TokenBudget, TransportBudget
+from ...players import TokenBudget, TransportBudget
 from ...players.human import Pending
 from ...players.llm.cascade import CascadePolicy
-from ...players.providers import profile
-from ...players.providers.mock import cascade_mock
-from ...players.providers.recorded import RecordingClient, recorder_for
-from ...server.service import _client as _provider_client
+from .seats import build_player, cassette_writer, direct_client, guard_for
 
 # Tasks whose actor and (thought-free) action the whole table sees.
 PUBLIC_TASKS = frozenset({"speak", "vote", "campaign", "campaign_vote", "last_words", "hunter_shoot", "badge", "review"})
@@ -210,8 +206,7 @@ class Table:
         # per game: turns each tier answered, escalations by reason (from AgentResult.meta)
         self.cascade_stats: dict = {"turns": 0, "strong_turns": 0, "calls": 0, "strong_calls": 0, "escalations": {}}
 
-        guards = tuple(x for x in cfg.guard.split("+") if x and x != "无")
-        self.guard = GuardStack(guards)
+        self.guard = guard_for(cfg.guard)
         self.transport = TransportBudget()
         self.tokens = TokenBudget(max_tokens=cfg.max_tokens)
 
@@ -235,44 +230,27 @@ class Table:
             return self.cfg.cascade["cheap"]           # the tier a turn starts on; the loop may escalate
         return m
 
+    def seat_settings(self, seat: int, task: str | None) -> dict:
+        """What it takes to build this seat's player for one turn, resolved here: which
+        model answers (and, for a cascade, the strong tier and its policy), the budgets,
+        guard, playbook and language. Plain JSON, so it can ride in a job to a model
+        worker (llm/queue.py), which then needs neither the game row nor the engine."""
+        cascade = self.seat_models.get(seat) == "cascade" and self.cascade_policy is not None
+        return {"model": self.model_for(seat, task), "seed": self.seed,
+                "strong": self.cfg.cascade["strong"] if cascade else None,
+                "cascade": self.cascade_policy.to_dict() if cascade else None,
+                "max_tokens": self.cfg.max_tokens, "fallbacks": list(self.cfg.fallbacks),
+                "guard": self.cfg.guard, "playbook": self.cfg.playbook, "lang": self.cfg.lang,
+                "abort_on_outage": self.cfg.abort_on_outage,
+                "record": bool(self.cfg.record), "config": self.cfg.to_dict()}
+
     def make_player(self, seat: int, client_factory=None, on_step=None, task: str | None = None,
                     version: int | None = None):
         """A fresh player object for one turn. Model seats keep nothing between
         turns: their memory travels in and out with the job (see agents.py)."""
-        model = self.model_for(seat, task)
-        if model == "script":
-            return RandomPlayer(self.seed * 100 + seat)
-        client = self._seat_client(model, seat, version, client_factory)
-        timeout = profile(model)["timeout_s"]
-        tiers: dict = {}
-        if self.seat_models.get(seat) == "cascade" and self.cascade_policy is not None:
-            strong = self.cfg.cascade["strong"]
-            tiers = {"strong_client": self._seat_client(strong, seat, version, client_factory, tier="strong"),
-                     "cascade": self.cascade_policy}
-            timeout = max(timeout, profile(strong)["timeout_s"])   # one policy serves both tiers
-        # The gateway tries each model of the chain once, with no pause between. So the
-        # seat retries the whole chain, with backoff: without it one 503 from the only model
-        # turned the turn into the default action (faults/report.md, model_faults).
-        pol = RecoveryPolicy(timeout_s=timeout, backoff_s=1.0 if self.hub is not None else RecoveryPolicy.backoff_s)
-        budget = self.transport if (self.cfg.abort_on_outage or self.hub is None) else None
-        return LLMPlayer(client, guard=self.guard, policy=pol, transport_budget=budget,
-                         token_budget=self.tokens, playbook=self.cfg.playbook != "none",
-                         on_step=on_step, lang=self.cfg.lang, **tiers)
-
-    def _seat_client(self, model: str, seat: int, version: int | None, client_factory=None, tier: str | None = None):
-        if client_factory is None and self.hub is not None:
-            client = self.hub.client(model, self.seed * 100 + seat, game_id=self.id, seat=seat, seq=version,
-                                     max_game_tokens=self.cfg.max_tokens, fallbacks=self.cfg.fallbacks)
-        else:
-            client = (client_factory or self.client_for)(model, seat)
-        writer = self.cassette()
-        if writer is not None:
-            # One player object per turn here, so its own turn counter is always 0: the
-            # journal version it was asked at goes in front of it in the key. A cascade's
-            # strong tier shares that numbering (recorded.RecordingClient, `tier`).
-            client = RecordingClient(client, writer, seat=seat, turn_prefix="-" if version is None else version,
-                                     tier=tier)
-        return client
+        return build_player(self.id, seat, version, self.seat_settings(seat, task), hub=self.hub,
+                            guard=self.guard, transport=self.transport, tokens=self.tokens,
+                            client_factory=client_factory, direct=self.client_for, on_step=on_step)
 
     def note_cascade(self, meta: dict) -> None:
         """Count one committed model turn's cascade record (AgentResult.meta["cascade"])."""
@@ -288,26 +266,12 @@ class Table:
             st["escalations"][e["reason"]] = st["escalations"].get(e["reason"], 0) + 1
 
     def cassette(self):
-        """This game's cassette writer, or None when the game is not being recorded.
-
-        A file per game, appended to by whichever process runs the turn (the actor's
-        node, a Streams worker, the node that adopted the game after a crash): one line
-        per call, so lines from several processes interleave but never tear. The writer
-        is cached per process so the message blobs are written once per process.
-        """
-        if not (self.cfg.record or os.environ.get("LLM_RECORD") == "1"):
-            return None
-        path = os.path.join(os.environ.get("LLM_RECORD_DIR", "runs/cassettes"), f"{self.id}.cassette.jsonl")
-        return recorder_for(path, {"game_id": self.id, "seed": self.seed, "config": self.cfg.to_dict(),
-                                   "online": True})
+        """This game's cassette writer, or None when the game is not being recorded (see
+        `cassette_writer`)."""
+        return cassette_writer(self.id, self.seed, self.cfg.record, self.cfg.to_dict())
 
     def client_for(self, model: str, seat: int):
-        if model == "mock":
-            return MockClient(seed=self.seed * 100 + seat)
-        offline = cascade_mock(model, self.seed * 100 + seat)     # the cascade's offline tiers
-        if offline is not None:
-            return offline
-        return _provider_client(model, self.seed * 100 + seat, self.env_keys)
+        return direct_client(model, self.seed * 100 + seat, self.env_keys)
 
     # ------------------------------------------------------------ world
     def reset(self) -> None:

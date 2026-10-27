@@ -2,9 +2,11 @@
 
     node (actor)                    Redis                                 worker process(es)
     ------------                    -----                                 ------------------
-    submit(job) ── XADD ──▶ llm:jobs:human | online | offline ──XREADGROUP──▶ rebuild the world from
-                                                                              Postgres, run the turn
+    submit(job) ── XADD ──▶ llm:jobs:human | online | offline ──XREADGROUP──▶ run the turn on the
+                                                                              view + spec in the job
     results loop ◀── XREAD ── llm:results:{node} ◀──────────── XADD ────────── then XACK the job
+    call relay   ◀── XREADGROUP ── llm:calls ◀─────────────────── XADD ────── model-call records
+      └─▶ Postgres llm_calls
 
 Why a queue at all: model turns are slow (seconds) and bursty; the game loop
 must not care how many there are or where they run. Workers scale on their own,
@@ -31,9 +33,31 @@ by any worker), the age of the oldest of them, the pending count (taken, not
 acknowledged = in flight), and the capacity the live workers announce in
 `llm:workers` -- the inputs of the overload signal (runtime/load.py).
 
-Jobs carry only (game, seat, version, task, memory). The worker rebuilds the
-exact view and legal actions by replaying the journal (a few ms), so nothing
-un-serialisable crosses the wire and a job can never act on a world that moved on.
+A job carries everything the turn needs, computed by the actor: the seat's view
+(already cut to what that seat may see), its action spec (the legal actions,
+arena.ActionSpec.to_dict), its memory, the version, the task, and the seat's
+player settings (model, cascade tier, budgets, guard, language:
+runtime/table.py Table.seat_settings). The worker builds the player from those
+(runtime/seats.py) and runs the ReAct loop; it reads no journal, replays
+nothing and has no Postgres connection. Whether the answer is still wanted is
+the actor's call, made where the world is: at commit it recomputes the seat's
+view and spec, compares them with what it sent, and checks the action against
+the live spec (runtime/actor.py `_drain`) -- a stale answer is dropped and the
+turn asked again.
+
+Jobs the actor no longer wants (deadline, turn gone, game stopped) are closed:
+the node sets ``llm:closed:{job_id}`` and PUBLISHes on ``llm:cancel``. A worker
+also closes a job once it has delivered its answer. A worker checks the key
+before it starts a job, so a job it never heard cancelled -- it subscribed
+later, or the job is a duplicate delivery of one already answered -- costs no
+model call.
+
+Model-call records (llm_calls: model, tokens, cache, latency, fallback reason)
+are made by the gateway in whichever process ran the call. A worker XADDs them
+to ``llm:calls`` in batches; every API process runs a CallRelay that reads the
+stream through a consumer group and writes the rows to Postgres, acknowledging
+a batch only after it is written. A failed write leaves the batch pending for
+a retry (by this or any other API process); it never touches a turn.
 
 Streaming (docs/adr/0009): a speech job's draft pieces go back on the same
 results stream as its result (field "d" instead of "r"), written by one sender
@@ -55,17 +79,22 @@ from collections.abc import Callable
 
 from redis.asyncio import Redis
 
-from ...arena import Record, Turn
+from ...arena import ActionSpec, wire
+from ...players import TokenBudget, TransportBudget
 from ..config import Settings
 from ..obs import logging as olog
 from ..obs import metrics, tracing
 from ..runtime.agents import AgentJob, AgentResult, DraftMsg, run_agent_turn
 from ..runtime.load import LatencyWindow, LoadSample
+from ..runtime.seats import build_player, guard_for
 
 LANES = ("human", "online", "offline")
 GROUP = "workers"
 WORKERS_KEY = "llm:workers"           # hash: consumer -> {"capacity", "ts"}, refreshed by each worker
 CANCEL_CHANNEL = "llm:cancel"
+CLOSED_TTL_S = 3600                   # how long a closed job's marker outlives it (re-deliveries come sooner)
+CALLS_KEY = "llm:calls"               # model-call records from the workers, for the API processes to store
+CALLS_GROUP = "recorders"
 log = olog.get("llm.queue")
 
 
@@ -75,6 +104,19 @@ def jobs_key(lane: str) -> str:
 
 def results_key(node: str) -> str:
     return f"llm:results:{node}"
+
+
+def closed_key(job_id: str) -> str:
+    """Set when a job is no longer to be run: cancelled by its node, or answered."""
+    return f"llm:closed:{job_id}"
+
+
+def job_payload(job: AgentJob) -> dict:
+    """The parts of a job that are the turn itself, as stream fields (JSON strings; "" for
+    a part the job lacks -- a worker drops such a job as one it cannot run)."""
+    return {"view": json.dumps(wire.encode(job.view), ensure_ascii=False) if job.view is not None else "",
+            "spec": json.dumps(job.spec.to_dict(), ensure_ascii=False) if job.spec is not None else "",
+            "player": json.dumps(job.settings, ensure_ascii=False) if job.settings is not None else ""}
 
 
 class StreamExecutor:
@@ -140,10 +182,21 @@ class StreamExecutor:
             out.pop((seat, version), None)
         self._release(gid)
 
+    def call_relay(self, store) -> CallRelay:
+        """What writes the workers' model-call records to Postgres from this process (Runtime.start)."""
+        return CallRelay(self.r, store, consumer=self.node)
+
     def _publish(self, job: AgentJob) -> None:
+        try:
+            payload = job_payload(job)
+        except Exception:                                  # noqa: BLE001 -- a bug, not a blip: the deadline answers the turn
+            log.exception("could not serialise the job for seat %s at %s; left to the turn's deadline",
+                          job.seat, job.version)
+            self.out.get(job.game_id, {}).pop((job.seat, job.version), None)
+            return
         self.inflight += 1
         self.jobs[(job.game_id, job.seat, job.version)] = job
-        fields = {"game_id": job.game_id, "seat": job.seat, "version": job.version, "task": job.task,
+        fields = {"game_id": job.game_id, "seat": job.seat, "version": job.version, "task": job.task, **payload,
                   "memory": json.dumps(job.memory, ensure_ascii=False) if job.memory else "",
                   "reply_to": self.node, "enq": time.time(), "lane": job.lane,
                   "stream": "1" if job.stream else "0", "job_id": job.job_id,
@@ -153,17 +206,21 @@ class StreamExecutor:
     async def _send(self, job: AgentJob, fields: dict) -> None:
         """XADD the job, retrying through a Redis blip. A job that never reached the stream
         used to be noticed only by the turn's deadline (agent_timeout_s, then the default
-        action). Gives up once the job is no longer wanted (cancelled: its slot is gone)."""
+        action). Gives up once the job is no longer wanted (cancelled: its slot is gone) --
+        checked before every try, so a job cancelled while Redis was away is not sent
+        when Redis comes back, where its turn may be committed by then (a worker no
+        longer looks that up)."""
         delay = 0.2
         while True:
+            if (self.jobs.get((job.game_id, job.seat, job.version)) is not job
+                    or (job.seat, job.version) not in self.out.get(job.game_id, {})):
+                return
             try:
                 await self.r.xadd(jobs_key(job.lane), fields, maxlen=100_000, approximate=True)
                 return
             except asyncio.CancelledError:
                 raise
             except Exception as exc:                       # noqa: BLE001
-                if (job.seat, job.version) not in self.out.get(job.game_id, {}):
-                    return
                 self.send_retries += 1
                 log.warning("could not queue a model job (%s): retrying in %.1fs", str(exc)[:120], delay)
                 await asyncio.sleep(delay)
@@ -171,10 +228,10 @@ class StreamExecutor:
 
     def cancel(self, job: AgentJob, reason: str) -> None:
         """Stop a job. One still held on this node (per-game cap) never goes out. One in
-        the stream: tell whichever worker runs it to stop it -- fire-and-forget; a worker
-        that has not taken it yet remembers the cancel and drops it with a stale reply,
-        which gives the game's slot back. If nobody hears it, the result is dropped as
-        stale anyway."""
+        the stream: mark it closed (llm:closed:{job_id}) and tell whichever worker runs it
+        to stop it -- fire-and-forget; a worker that has not taken it yet finds the mark
+        (or remembers the cancel) and drops it with a stale reply. If the mark is lost
+        too, the job runs and its result is dropped by the actor as stale."""
         q = self.held.get(job.game_id)
         if q and any(j is job for j in q):
             kept = deque(j for j in q if j is not job)
@@ -185,13 +242,20 @@ class StreamExecutor:
             return
         msg = json.dumps({"job_id": job.job_id, "game_id": job.game_id, "seat": job.seat, "version": job.version,
                           "reason": reason})
-        asyncio.get_running_loop().create_task(self._publish_cancel(msg))
+        asyncio.get_running_loop().create_task(self._publish_cancel(job.job_id, msg))
         # Its answer is not wanted, so it no longer holds one of the game's places in the
         # stream. Waiting for the worker's reply to give it back would block the game's next
         # asks for agent_timeout_s whenever that reply never comes (Redis lost the job).
         self._settle(job.game_id, job.seat, job.version)
 
-    async def _publish_cancel(self, msg: str) -> None:
+    async def _publish_cancel(self, job_id: str, msg: str) -> None:
+        # The key first, and through a Redis blip: it is what a worker that never hears the
+        # PUBLISH (subscribed later, reconnecting after the same blip) still finds before it
+        # starts the job.
+        try:
+            await _retry(lambda: self.r.set(closed_key(job_id), "1", ex=CLOSED_TTL_S))
+        except Exception:                                  # noqa: BLE001 -- a lost cancel costs tokens, not correctness
+            log.warning("could not mark a cancelled job closed")
         try:
             await self.r.publish(CANCEL_CHANNEL, msg)
         except Exception:                                  # noqa: BLE001 -- a lost cancel costs tokens, not correctness
@@ -287,12 +351,15 @@ class StreamExecutor:
 
 
 class Worker:
-    """A worker process: pulls jobs by lane priority, runs them, replies, acks."""
+    """A worker process: pulls jobs by lane priority, runs them, replies, acks.
 
-    def __init__(self, settings: Settings, store, redis: Redis, hub, *, consumer: str | None = None,
+    Needs Redis and the model providers only: the turn (view, spec, memory, the seat's
+    player settings) is in the job, and the model-call records go back over Redis."""
+
+    def __init__(self, settings: Settings, redis: Redis, hub, *, consumer: str | None = None,
                  concurrency: int = 8, env_keys: dict | None = None, claim_idle_ms: int | None = None,
-                 max_deliveries: int = 3, store_calls: bool = False):
-        self.s, self.store, self.r, self.hub = settings, store, redis, hub
+                 max_deliveries: int = 3):
+        self.s, self.r, self.hub = settings, redis, hub
         self.consumer = consumer or f"{socket.gethostname()}-{os.getpid()}"
         self.sem = asyncio.Semaphore(concurrency)
         self.concurrency = concurrency
@@ -304,7 +371,8 @@ class Worker:
         # long unacknowledged. Workers keep the jobs they are running fresh (_keepalive_loop),
         # so this measures how long a worker has been dead, not how long its turn takes.
         self.claim_idle_ms = claim_idle_ms or getattr(settings, "claim_idle_ms", 0) or int(settings.agent_timeout_s * 1000)
-        self.store_calls = store_calls                    # write the hub's model-call records to Postgres
+        self._unsent: list[dict] = []                    # model-call records not yet on llm:calls
+        self.calls_sent = 0
         self.held: dict[bytes | str, str] = {}            # entry id -> lane, for jobs running here
         self.redis_errors = 0
         self.max_deliveries = max_deliveries
@@ -334,7 +402,7 @@ class Worker:
         beat = asyncio.create_task(self._announce_loop())
         self._tasks.add(asyncio.create_task(self._cancel_loop()))
         self._tasks.add(asyncio.create_task(self._keepalive_loop()))
-        if self.store_calls:
+        if self.hub is not None:
             self._tasks.add(asyncio.create_task(self._flush_loop()))
         delay = 0.2
         try:
@@ -422,6 +490,8 @@ class Worker:
             if f.get("reply_to"):
                 body = {"r": json.dumps(reply, ensure_ascii=False, default=str)}
                 await _retry(lambda: self.r.xadd(results_key(f["reply_to"]), body, maxlen=10_000, approximate=True))
+            if not reply.get("stale") and not (reply.get("meta") or {}).get("cancelled"):
+                await self._close(_job_key(f))           # answered: a second delivery of it is not run again
             await _retry(lambda: self.r.xack(jobs_key(lane), GROUP, eid))
         except asyncio.CancelledError:
             raise
@@ -432,36 +502,36 @@ class Worker:
             self.sem.release()
 
     async def _run(self, f: dict) -> dict | None:
+        """Run one job's turn; None = dropped without asking the model (the node gets a stale reply)."""
         gid, seat, version = f["game_id"], int(f["seat"]), int(f["version"])
-        row = await self.store.get_game(gid)
-        if row is None or row["state"] not in ("running", "waiting"):
-            self.stale += 1
-            return None
-        rows = await self.store.journal(gid)
-        if len(rows) < version:
-            self.stale += 1                               # written by an owner whose steps were never committed
-            return None
-        # A job may have been asked ahead of its turn (an open vote), so the world may have
-        # moved since `version`. It is still wanted if the seat's turn is still open now; the
-        # actor checks at commit time that the seat sees what it saw when it was asked.
-        from ..runtime.runtime import Runtime
-        table = Runtime.table_from_row(row, self.env_keys, hub=self.hub)      # under the game's own engine version
-        Runtime.replay(table, [Record(r.actor, r.task, r.action, r.forced) for r in rows])
-        t = table.turn
-        opener = getattr(table.env, "open_turns", None)
-        opened = ([t] if isinstance(t, Turn) else []) + (list(opener()) if callable(opener) and isinstance(t, Turn) else [])
-        t = next((o for o in opened if o.actor == seat and o.task == f["task"]), None)
-        if t is None:
-            self.stale += 1                               # the world moved on; the actor no longer wants this
-            return None
-        mem = json.loads(f["memory"]) if f.get("memory") else None
-        key = f.get("job_id") or f"{gid}:{seat}:{version}"
+        key = _job_key(f)
         if self._cancel_early.pop(key, None) is not None:
             self.stale += 1                               # cancelled while it sat in the queue
             return None
-        job = AgentJob(gid, seat, version, t.task, table.env.observe(seat), table.env.action_space(seat, t.task),
-                       tuple(mem) if mem else None,
-                       make_player=lambda on_step: table.make_player(seat, task=t.task, version=version),
+        if not (f.get("view") and f.get("spec") and f.get("player")):
+            self.stale += 1                               # nothing to run (a job from a node that predates payloads)
+            log.warning("job %s carries no view/spec/player settings: dropped", key)
+            return None
+        try:
+            closed = await self.r.exists(closed_key(key))
+        except Exception:                                  # noqa: BLE001 -- unsure: run it; the actor drops what it does not want
+            closed = False
+        if closed:
+            self.stale += 1                               # cancelled, or already answered (a re-delivery)
+            return None
+        view = wire.decode(json.loads(f["view"]))
+        spec = ActionSpec.from_dict(json.loads(f["spec"]))
+        st = json.loads(f["player"])
+        mem = json.loads(f["memory"]) if f.get("memory") else None
+
+        def make_player(on_step):
+            # a fresh guard and fresh per-turn budgets, as a worker has always had (it used to
+            # rebuild the table for every job); the game-wide token cap is the gateway's (GameBudget)
+            return build_player(gid, seat, version, st, hub=self.hub, env_keys=self.env_keys,
+                                guard=guard_for(st["guard"]), transport=TransportBudget(),
+                                tokens=TokenBudget(max_tokens=st["max_tokens"]), on_step=on_step)
+        job = AgentJob(gid, seat, version, f["task"], view, spec, tuple(mem) if mem else None,
+                       make_player=make_player, settings=st,
                        trace_ctx=tracing.from_carrier(json.loads(f["tp"])) if f.get("tp") else None,
                        stream=f.get("stream") == "1", job_id=key)
         loop = asyncio.get_running_loop()
@@ -545,20 +615,39 @@ class Worker:
                 except Exception:                          # noqa: BLE001 -- redis blip: next round
                     pass
 
+    async def _close(self, key: str) -> None:
+        try:
+            await self.r.set(closed_key(key), "1", ex=CLOSED_TTL_S)
+        except Exception:                                  # noqa: BLE001 -- a re-delivery would just run again
+            log.warning("could not mark job %s closed", key)
+
     async def _flush_loop(self) -> None:
-        """Model-call records made here go to Postgres, as an API node's do (runtime.flush_calls)."""
+        """Model-call records made here go to llm:calls; an API process stores them (CallRelay)."""
         while True:
             await asyncio.sleep(1.0)
             await self.flush_calls()
 
     async def flush_calls(self) -> int:
-        rows = [r.to_row() for r in self.hub.sink.drain(5000)] if self.hub is not None else []
-        if rows:
+        """Send the hub's model-call records to llm:calls. Ones Redis did not take are kept
+        (bounded) and sent with the next flush. Never raises: accounting must not stop turns."""
+        if self.hub is not None:
+            self._unsent += [r.to_row() for r in self.hub.sink.drain(5000)]
+        if not self._unsent:
+            return 0
+        rows, self._unsent = self._unsent, []
+        sent = 0
+        for i in range(0, len(rows), 500):
+            part = rows[i:i + 500]
             try:
-                await self.store.record_calls(rows)
-            except Exception:                              # noqa: BLE001 -- accounting must not stop turns
-                log.exception("could not write llm_calls")
-        return len(rows)
+                await self.r.xadd(CALLS_KEY, {"c": json.dumps(part, ensure_ascii=False, default=str)},
+                                  maxlen=100_000, approximate=True)
+                sent += len(part)
+            except Exception:                              # noqa: BLE001 -- redis blip: next flush
+                self._unsent = (rows[i:] + self._unsent)[-50_000:]
+                log.warning("could not send %d model-call records: kept for the next flush", len(rows) - i)
+                break
+        self.calls_sent += sent
+        return sent
 
     async def _reclaim_loop(self) -> None:
         """Jobs a dead worker took and never acknowledged: claim them after they sit idle."""
@@ -594,6 +683,97 @@ class Worker:
                     t.add_done_callback(self._tasks.discard)
 
 
+class CallRelay:
+    """API side of the model-call records the workers make: ``llm:calls`` -> Postgres.
+
+    Every API process runs one, all in one consumer group, so each batch is written by
+    one of them. A batch is acknowledged only once its rows are in Postgres; a write
+    that fails leaves it pending, and it is claimed again (by this process or another,
+    e.g. after this one died mid-write) once it has sat `claim_idle_ms`. A batch that
+    has failed `max_deliveries` times is dropped with a log line -- a row Postgres will
+    never take must not be retried for ever. Runs beside the games; never stops a turn.
+    """
+
+    def __init__(self, redis: Redis, store, consumer: str, *, claim_idle_ms: int = 10_000,
+                 max_deliveries: int = 5, batch: int = 50):
+        self.r, self.store, self.consumer = redis, store, consumer
+        self.claim_idle_ms, self.max_deliveries, self.batch = claim_idle_ms, max_deliveries, batch
+        self.written = 0
+        self.failed = 0
+        self.dropped = 0
+        self._group = False
+
+    async def _ensure_group(self) -> None:
+        if self._group:
+            return
+        try:
+            await self.r.xgroup_create(CALLS_KEY, CALLS_GROUP, id="0", mkstream=True)
+        except Exception as e:                             # noqa: BLE001 -- BUSYGROUP: already there
+            if "BUSYGROUP" not in str(e):
+                raise
+        self._group = True
+
+    async def run(self) -> None:
+        while True:
+            try:
+                await self.drain_once(block=1000)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:                       # noqa: BLE001 -- redis blip (or it came back empty)
+                self._group = False
+                log.warning("relaying model-call records failed (%s): retrying", str(exc)[:200])
+                await asyncio.sleep(1.0)
+
+    async def drain_once(self, block: int | None = None) -> int:
+        """Write what is waiting: batches left pending long enough, then new ones. Returns rows written."""
+        await self._ensure_group()
+        n = 0
+        res = await self.r.xautoclaim(CALLS_KEY, CALLS_GROUP, self.consumer, self.claim_idle_ms,
+                                      start_id="0-0", count=self.batch)
+        n += await self._write(res[1] if res else [], again=True)
+        got = await self.r.xreadgroup(CALLS_GROUP, self.consumer, {CALLS_KEY: ">"}, count=self.batch, block=block)
+        for _stream, entries in got or []:
+            n += await self._write(entries)
+        return n
+
+    async def _write(self, entries, again: bool = False) -> int:
+        rows: list[dict] = []
+        ids, junk = [], []
+        for eid, f in entries:
+            try:
+                rows += json.loads(_s(f[b"c"] if b"c" in f else f["c"]))
+                ids.append(eid)
+            except (KeyError, TypeError, ValueError):
+                junk.append(eid)                           # not a batch of records (or trimmed away): nothing to keep
+        if junk:
+            await self.r.xack(CALLS_KEY, CALLS_GROUP, *junk)
+        if not ids:
+            return 0
+        try:
+            await self.store.record_calls(rows)
+        except Exception:                                  # noqa: BLE001 -- accounting must not stop games
+            self.failed += 1
+            log.exception("could not write %d llm_calls rows: left pending for a retry", len(rows))
+            if again:
+                await self._drop_hopeless(ids)
+            return 0
+        await self.r.xack(CALLS_KEY, CALLS_GROUP, *ids)
+        self.written += len(rows)
+        return len(rows)
+
+    async def _drop_hopeless(self, ids: list) -> None:
+        for eid in ids:
+            info = await self.r.xpending_range(CALLS_KEY, CALLS_GROUP, min=eid, max=eid, count=1)
+            if info and info[0]["times_delivered"] >= self.max_deliveries:
+                self.dropped += 1
+                log.error("dropping model-call batch %s after %d failed writes", _s(eid), info[0]["times_delivered"])
+                await self.r.xack(CALLS_KEY, CALLS_GROUP, eid)
+
+
+def _job_key(f: dict) -> str:
+    return f.get("job_id") or f"{f['game_id']}:{f['seat']}:{f['version']}"
+
+
 async def _retry(op, tries: int = 6, delay: float = 0.2):
     """A Redis write that must not be lost to a blip: a few tries with backoff (about 6 s),
     then the error goes up (the job stays unacknowledged and is claimed and run again)."""
@@ -617,7 +797,6 @@ async def main() -> None:
     """python -m werewolf_harness.app.llm.worker (see worker.py)."""
     from ...server.http import read_env
     from ..config import get_settings
-    from ..storage import Store
     from .gateway import Hub
     s = get_settings()
     olog.setup()
@@ -625,15 +804,13 @@ async def main() -> None:
     if os.environ.get("WORKER_METRICS_PORT"):
         from prometheus_client import start_http_server
         start_http_server(int(os.environ["WORKER_METRICS_PORT"]))
-    store = Store.connect(s.database_url)
     r = Redis.from_url(s.redis_url)
     env = read_env()
     hub = Hub(s.redis_url, env_keys=env, tpm=s.llm_tpm, default_tpm=s.llm_default_tpm)
-    w = Worker(s, store, r, hub, concurrency=s.agent_workers, env_keys=env, store_calls=True)
+    w = Worker(s, r, hub, concurrency=s.agent_workers, env_keys=env)
     log.info("worker %s up", w.consumer)
     try:
         await w.run()
     finally:
         await w.flush_calls()
-        await store.close()
         await r.aclose()

@@ -101,7 +101,7 @@
 | 5 | 节点投任务时 Redis 正好断开，任务静默丢失，回合等到期限后兜底（`redis_restart`、`network`） | `XADD` 是用 `create_task` 发出去就不管，失败只出现在“Task exception was never retrieved”日志里 | 退避重试，直到发出去，或者这个任务被取消；worker 回写结果和 ACK 也加了重试 |
 | 6 | 被取消的任务一直占着这局在队列里的名额（每局 4 个），直到 worker 回复；Redis 把任务弄丢时，回复永远不会来 | 名额要等回复到了才释放 | 取消时立即释放名额 |
 | 7 | 在线服务里，唯一模型的一次 503 就让回合直接兜底（`model_faults`：88 个回合里 61 个兜底） | `table.py` 的注释说“网关已经做过退避”，于是把座位层的重试关了；可网关对每个模型只试一次、不退避 | 座位层重新启用重试：最多 2 次，退避 1 s、2 s |
-| 8 | 在 streams 模式下，worker 进程的模型调用记录从来没写进 `llm_calls`，看板和成本统计漏掉了全部 worker 调用 | 只有 API 节点在定时把调用记录写进数据库 | worker 也每秒写一次，退出前再写一次 |
+| 8 | 在 streams 模式下，worker 进程的模型调用记录从来没写进 `llm_calls`，看板和成本统计漏掉了全部 worker 调用 | 只有 API 节点在定时把调用记录写进数据库 | worker 也每秒写一次，退出前再写一次（2026-10-26 起改为 worker 写进 Redis 流 `llm:calls`，由 API 节点的 `CallRelay` 写库，worker 不再连 Postgres，见 ADR 0005） |
 | 9 | Redis 刚重启的约 1 秒里，所有 `/api/` 请求都返回 500 | 按 IP 限流的中间件拿到了连接池里一条已经断开的连接，抛出 `RuntimeError` | 限流在 Redis 不可用时放行请求，并计数 |
 
 ## 结果

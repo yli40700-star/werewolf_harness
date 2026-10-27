@@ -55,6 +55,10 @@ class Runtime:
         self.wheel = TimingWheel(tick=0.1)
         self.env_keys = env_keys or {}
         self.hub = hub                              # app.llm.gateway.Hub (model layer), optional
+        # Model calls made in worker processes come back over Redis (llm/queue.py CallRelay);
+        # this process writes them to Postgres, as it does its own hub's.
+        make_relay = getattr(self.executor, "call_relay", None)
+        self.relay = make_relay(store) if callable(make_relay) else None
         self.hooks = hooks or ActorHooks()
         self.actors: dict[str, GameActor] = {}
         self.finished: dict[str, Table] = {}        # recently ended here, kept for readers (bounded)
@@ -82,6 +86,8 @@ class Runtime:
         self._tasks.append(asyncio.create_task(self._renew_loop(), name="lease-renew"))
         if self.hub is not None:
             self._tasks.append(asyncio.create_task(self._flush_calls(), name="llm-call-flush"))
+        if self.relay is not None:
+            self._tasks.append(asyncio.create_task(self.relay.run(), name="llm-call-relay"))
         if scan:
             await self.scan()
             self._tasks.append(asyncio.create_task(self._scan_loop(), name="recovery-scan"))
@@ -471,15 +477,21 @@ class Runtime:
             await self.flush_calls()
 
     async def flush_calls(self) -> int:
-        if self.hub is None:
-            return 0
-        rows = [r.to_row() for r in self.hub.sink.drain(5000)]
+        """Write the model-call records made here, and those the workers sent that are
+        waiting on llm:calls. Never raises: accounting must not stop games."""
+        rows = [r.to_row() for r in self.hub.sink.drain(5000)] if self.hub is not None else []
         if rows:
             try:
                 await self.store.record_calls(rows)
             except Exception:                              # noqa: BLE001 -- accounting must not stop games
                 log.exception("could not write llm_calls")
-        return len(rows)
+        n = len(rows)
+        if self.relay is not None:
+            try:
+                n += await self.relay.drain_once()
+            except Exception as exc:                       # noqa: BLE001 -- redis blip: the relay loop retries
+                log.warning("could not relay the workers' model calls (%s)", str(exc)[:200])
+        return n
 
     async def _renew_loop(self) -> None:
         while True:

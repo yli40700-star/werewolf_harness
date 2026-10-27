@@ -286,7 +286,8 @@ class GameActor:
                        self.t.make_player(s, on_step=on_step, task=task, version=v),
                        on_step=self._step_from_thread,
                        lane=self.t.cfg.lane or ("human" if self.t.human_seats else "online"),
-                       trace_ctx=turn_ctx, stream=t.task in DRAFT_AUDIENCE)
+                       trace_ctx=turn_ctx, stream=t.task in DRAFT_AUDIENCE,
+                       settings=self.t.seat_settings(t.actor, t.task))
         self.asks[t.actor] = {"turn": t, "version": v, "view": fingerprint(view), "spec": spec_key(spec),
                               "result": None, "since": time.time(), "job": job,
                               # drafts of this ask, keyed (run, attempt); runs superseded by a re-run

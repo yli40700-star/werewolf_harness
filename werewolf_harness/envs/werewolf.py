@@ -23,7 +23,7 @@ from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
-from ..arena import ActionSpec, Param, Terminal, ToolSpec, Turn
+from ..arena import ActionSpec, AssignRule, Param, Terminal, ToolSpec, Turn
 from ..players.strategies.playbook import (load_playbook, plan_for, plan_labels,
                                            strategy_ids, strategy_labels)
 
@@ -568,18 +568,11 @@ class Werewolf:
         if name == "pack_plan":
             wolves = self._living_wolves()
             staffable = tuple(p.id for p in plan_for(len(wolves)))
-            def validate(args: dict) -> str | None:
-                roles = args.get("roles") or {}
-                unknown = sorted(set(roles.values()) - set(strategy_ids()))
-                if unknown:
-                    return f"unknown tactic(s): {unknown}"
-                off = sorted(set(roles) - set(wolves))
-                if off:
-                    return f"player(s) {off} are not living wolves; the pack is {wolves}"
-                missing = sorted(set(wolves) - set(roles))
-                if missing:
-                    return f"every living wolf needs a tactic; {missing} have none"
-                return None
+            # every living wolf gets exactly one known tactic (data, so it survives the trip to a worker)
+            staffing = AssignRule("roles", keys=tuple(wolves), values=tuple(strategy_ids()),
+                                  unknown="unknown tactic(s): {bad}",
+                                  extra="player(s) {bad} are not living wolves; the pack is {keys}",
+                                  missing="every living wolf needs a tactic; {bad} have none")
             return ToolSpec(name, "WEREWOLF ONLY: commit the pack. Name a plan id as the shape you are going for, and give EVERY living wolf a tactic -- any tactic id from list_strategies, not only the plan's own. ENDS YOUR TURN.",
                             {"plan": Param("str", "a plan id from list_plans", choices=staffable,
                                            labels=plan_labels()),
@@ -588,7 +581,7 @@ class Werewolf:
                              "vote_target": Param("int", "狼队明天白天约定投谁（一个活着的非狼座位）。约定不是命令，队友仍可自行判断；留空表示不约定",
                                                   required=False, choices=tuple(self._kill_targets())),
                              "thought": self.THOUGHT},
-                            validate=validate)
+                            rules=(staffing,))
         if name == "campaign_run":
             return ToolSpec(name, "Stand for sheriff and make your campaign speech. The sheriff speaks first each day and casts 1.5 votes. Candidates do not vote in the election. ENDS YOUR TURN.",
                             {"content": text("why the table should elect you"),

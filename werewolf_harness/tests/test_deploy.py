@@ -124,11 +124,14 @@ def _compose() -> dict:
 
 def test_compose_ordering_and_healthchecks():
     svcs = _compose()["services"]
-    for name in ("api1", "api2", "worker"):
+    for name in ("api1", "api2"):
         dep = svcs[name]["depends_on"]
         assert dep["postgres"]["condition"] == "service_healthy"
         assert dep["redis"]["condition"] == "service_healthy"
         assert dep["migrate"]["condition"] == "service_completed_successfully"
+    # a worker has no database: the job carries the turn, the call records go back over Redis
+    assert svcs["worker"]["depends_on"] == {"redis": {"condition": "service_healthy"}}
+    assert "DATABASE_URL" not in svcs["worker"]["environment"]
     assert svcs["migrate"]["restart"] == "no"
     for name in ("postgres", "redis", "worker", "prometheus", "grafana"):
         assert "test" in svcs[name]["healthcheck"], name

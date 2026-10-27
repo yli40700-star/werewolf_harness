@@ -258,7 +258,7 @@ async def test_a_worker_that_dies_mid_draft_is_superseded_by_the_rerun(settings,
     ex = StreamExecutor(redis, settings)
     rt = _rt(settings.model_copy(update={"agent_timeout_s": 30.0}), store, redis, executor=ex)
     await rt.start(scan=False)
-    w1 = Worker(settings, store, redis, Hub(REDIS_URL, sim_sleep=False), consumer="w1", claim_idle_ms=600)
+    w1 = Worker(settings, redis, Hub(REDIS_URL, sim_sleep=False), consumer="w1", claim_idle_ms=600)
     t1 = asyncio.create_task(w1.run())
     a = await rt.create(TableConfig(variant="8p", models=["mock-mid-speech"]), seed=78)
     reader = Reader(a)
@@ -266,7 +266,7 @@ async def test_a_worker_that_dies_mid_draft_is_superseded_by_the_rerun(settings,
     victim = next(d for d in a.t.drafts.values() if d.text)
     await w1.stop()                                       # dies mid-speech; its job stays unacknowledged
     t1.cancel()
-    w2 = Worker(settings, store, redis, Hub(REDIS_URL, sim_sleep=False), consumer="w2", claim_idle_ms=600)
+    w2 = Worker(settings, redis, Hub(REDIS_URL, sim_sleep=False), consumer="w2", claim_idle_ms=600)
     t2 = asyncio.create_task(w2.run())
     await until(lambda: len(a.t.journal) > victim.seq, 60)
     rec = a.t.journal[victim.seq]
@@ -285,7 +285,7 @@ async def test_a_cancel_reaches_the_worker_running_the_turn(settings, store, red
     ex = StreamExecutor(redis, settings)
     rt = _rt(settings.model_copy(update={"agent_timeout_s": 0.8}), store, redis, executor=ex)
     await rt.start(scan=False)
-    w = Worker(settings, store, redis, Hub(REDIS_URL, sim_sleep=False), consumer="w1")
+    w = Worker(settings, redis, Hub(REDIS_URL, sim_sleep=False), consumer="w1")
     wt = asyncio.create_task(w.run())
     a = await rt.create(TableConfig(variant="8p", models=["mock-slow-speech"]), seed=79)
     await until(lambda: w.cancelled >= 1, 60)

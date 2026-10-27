@@ -10,7 +10,7 @@ from sqlalchemy import text
 from starlette.websockets import WebSocketDisconnect
 
 from werewolf_harness.app.llm.gateway import CallRecord, Hub
-from werewolf_harness.app.llm.queue import GROUP, StreamExecutor, Worker, jobs_key
+from werewolf_harness.app.llm.queue import GROUP, CallRelay, StreamExecutor, Worker, jobs_key
 from werewolf_harness.app.runtime.agents import AgentJob
 
 from .conftest import REDIS_URL
@@ -22,21 +22,21 @@ async def test_a_worker_outlives_a_redis_that_comes_back_empty(settings, store, 
     """Redis restarted without persistence: no streams, no consumer group. The worker used
     to die on the first read (NOGROUP / connection reset); it now waits, makes the group
     again and goes on taking jobs."""
-    w = Worker(settings, store, redis, None, consumer="w")
+    w = Worker(settings, redis, None, consumer="w")
     t = asyncio.create_task(w.run())
     await asyncio.sleep(0.3)
     await redis.flushdb()                                    # everything gone, the group too
     await until(lambda: w.redis_errors >= 1, 10)
     await redis.xadd(jobs_key("online"), {"game_id": "gone", "seat": 1, "version": 0, "task": "speak",
                                           "memory": "", "reply_to": "n", "enq": time.time()})
-    await until(lambda: w.stale >= 1, 10)                    # read and handled: a job for no game is dropped
+    await until(lambda: w.stale >= 1, 10)                    # read and handled: a job with nothing to run is dropped
     assert not t.done()
     await w.stop()
     t.cancel()
 
 
 async def test_a_running_job_stays_fresh_so_only_a_dead_workers_job_is_claimed(settings, store, redis):
-    w1 = Worker(settings, store, redis, None, consumer="w1", claim_idle_ms=600)
+    w1 = Worker(settings, redis, None, consumer="w1", claim_idle_ms=600)
     await w1.ensure_groups()
     await redis.xadd(jobs_key("online"), {"game_id": "g", "seat": 1, "version": 0, "task": "speak", "memory": "",
                                           "reply_to": "n", "enq": time.time()})
@@ -70,14 +70,34 @@ async def test_cancelling_a_job_gives_its_place_in_the_stream_back(settings, red
     await asyncio.sleep(0.05)                                # let the XADD / PUBLISH tasks run
 
 
-async def test_a_worker_writes_its_model_calls_to_postgres(settings, store, redis):
+async def test_model_calls_made_on_a_worker_reach_postgres_through_the_api_side(settings, store, redis):
+    """The worker has no database: its records go to llm:calls and an API process's CallRelay
+    writes them. A failed write is not acknowledged: the batch is written on a later try."""
     hub = Hub(REDIS_URL, sim_sleep=False)
-    w = Worker(settings, store, redis, hub, consumer="w", store_calls=True)
+    w = Worker(settings, redis, hub, consumer="w")
     hub.sink.put(CallRecord("gx", 3, 7, "mock", "mock", "ok", input_tokens=10, output_tokens=2, latency_ms=5))
     assert await w.flush_calls() == 1
+
+    class _Down:                                         # Postgres refuses the first write
+        def __init__(self):
+            self.tries = 0
+
+        async def record_calls(self, rows):
+            self.tries += 1
+            if self.tries == 1:
+                raise ConnectionError("database unavailable")
+            await store.record_calls(rows)
+    down = _Down()
+    relay = CallRelay(redis, down, consumer="api1", claim_idle_ms=200)
+    assert await relay.drain_once() == 0 and relay.failed == 1     # not written, not acknowledged
+    hub.sink.put(CallRecord("gx", 4, 8, "mock", "mock", "ok", input_tokens=1, output_tokens=1, latency_ms=1))
+    await w.flush_calls()
+    await asyncio.sleep(0.3)
+    other = CallRelay(redis, down, consumer="api2", claim_idle_ms=200)     # e.g. api1 died: another node takes it
+    assert await other.drain_once() == 2
     async with store.engine.connect() as c:
-        n = await c.scalar(text("SELECT count(*) FROM llm_calls WHERE game_id = 'gx' AND seq = 7"))
-    assert n == 1
+        n = await c.scalar(text("SELECT count(*) FROM llm_calls WHERE game_id = 'gx'"))
+    assert n == 2 and await other.drain_once() == 0              # each written once
 
 
 @pytest.mark.timeout(60)
@@ -171,7 +191,7 @@ async def test_a_dead_lettered_job_tells_its_node(settings, store, redis):
     """A job delivered too often goes to llm:dead. The node used to hear nothing and the
     turn waited out its whole deadline before the default action."""
     from werewolf_harness.app.llm.queue import results_key
-    w = Worker(settings, store, redis, None, consumer="w", claim_idle_ms=100, max_deliveries=1)
+    w = Worker(settings, redis, None, consumer="w", claim_idle_ms=100, max_deliveries=1)
     await w.ensure_groups()
     await redis.xadd(jobs_key("online"), {"game_id": "gd", "seat": 2, "version": 9, "task": "vote", "memory": "",
                                           "reply_to": "n1", "enq": time.time()})

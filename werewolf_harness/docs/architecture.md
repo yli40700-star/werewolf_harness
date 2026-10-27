@@ -43,7 +43,7 @@
 
 ## 三个不变量
 
-- `world == f(seed, journal)`：重放是恢复、只读加载、worker 构造视角、确定性自检这四件事的共同基础。更准确地说是 `world == f(engine_version, seed, journal)`：每局记录创建时的引擎版本，这四件事都按记录的版本重放（ADR 0010）。
+- `world == f(seed, journal)`：重放是恢复、只读加载、确定性自检这三件事的共同基础（worker 不重放：视图由 actor 算好随任务下发，见 ADR 0005）。更准确地说是 `world == f(engine_version, seed, journal)`：每局记录创建时的引擎版本，这三件事都按记录的版本重放（ADR 0010）。
 - 一局任意时刻只有一个写者：进程内靠 actor，进程间靠租约加 fencing。
 - 模型结果只对它依据的那个 version 生效：迟到或重复的结果一律丢弃。
 

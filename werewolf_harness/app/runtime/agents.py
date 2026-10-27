@@ -11,6 +11,13 @@ A model seat's memory (belief table + note to self) goes in with the job and
 comes back with the result. Nothing is kept inside a player object between
 turns, which is what lets (a) a recovered game continue with the AI remembering
 what it thought, and (b) the same job run on any worker process (llm/queue.py).
+
+A job is the whole turn, computed by the actor: the seat's view (cut to what it
+may see), its action spec, its memory, and `settings` -- the seat's player
+settings (Table.seat_settings) from which a process that has no Table builds the
+player (runtime/seats.py). The in-process executor uses `make_player` instead,
+which builds the same player from the same settings with the table's shared
+guard and budgets.
 """
 from __future__ import annotations
 
@@ -47,6 +54,7 @@ class AgentJob:
     max_retries: int = 3
     lane: str = "online"                      # human (a person is waiting) | online | offline
     trace_ctx: Any = None                     # OpenTelemetry context of the turn span
+    settings: dict | None = None              # Table.seat_settings: what a remote worker builds the player from
     # Streaming (docs/adr/0009): where draft messages go (None = this turn is not streamed),
     # the token that stops the turn and its model call, and this execution's id -- a job
     # can run twice (a worker died, the job was claimed again) and each run streams anew.

@@ -55,10 +55,19 @@ services:
   api2:
     <<: *app
     environment: {<<: *appenv, NODE_ID: node-2, OTEL_SERVICE_NAME: api-2}
+  # A worker needs Redis and the model providers only: each job carries the turn (view,
+  # legal actions, memory, the seat's settings) and the model-call records go back over
+  # Redis for the API nodes to store. No Postgres, no migrations to wait for.
   worker:
     <<: *app
     command: ["python", "-m", "werewolf_harness.app.llm.worker"]
-    environment: {<<: *appenv, OTEL_SERVICE_NAME: worker, WORKER_METRICS_PORT: "9100"}
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: worker
+      WORKER_METRICS_PORT: "9100"
+    depends_on:
+      redis: {condition: service_healthy}
     deploy: {replicas: "${WORKERS:-2}"}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:9100/metrics', timeout=2)"]
